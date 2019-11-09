@@ -1,0 +1,16 @@
+[package]
+name = "minecraft-protocol"
+version = "0.1.0"
+authors = ["vagola <vladislavs.golubs@yandex.ru>"]
+edition = "2018"
+description = "Library for decoding and encoding Minecraft packets"
+license = "MIT"
+homepage = "https://github.com/eihwaz/minecraft-protocol"
+repository = "https://github.com/eihwaz/minecraft-protocol"
+keywords = ["minecraft", "protocol", "packet", "io"]
+readme = "README.md"
+
+[lib]
+name = "mcpl"
+
+[dependencies]
