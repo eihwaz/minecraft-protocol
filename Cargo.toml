@@ -14,3 +14,4 @@ readme = "README.md"
 name = "mcpl"
 
 [dependencies]
+byteorder = "1"
