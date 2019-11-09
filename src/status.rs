@@ -21,7 +21,7 @@ impl StatusServerBoundPacket {
         }
     }
 
-    pub fn decode<R: Read>(&self, type_id: u8, reader: &mut R) -> Result<Self, DecodePacketError> {
+    pub fn decode<R: Read>(type_id: u8, reader: &mut R) -> Result<Self, DecodePacketError> {
         match type_id {
             0x0 => Ok(StatusServerBoundPacket::StatusRequest),
             0x1 => {
