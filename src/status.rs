@@ -1,7 +1,8 @@
-use crate::{DecodePacketError, Packet};
+use crate::{DecodeError, EncodeError, Packet, PacketWrite};
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
-use std::io;
+use serde::{Deserialize, Serialize};
 use std::io::{Read, Write};
+use uuid::Uuid;
 
 pub enum StatusServerBoundPacket {
     StatusRequest,
@@ -9,7 +10,7 @@ pub enum StatusServerBoundPacket {
 }
 
 pub enum StatusClientBoundPacket {
-    StatusResponse,
+    StatusResponse(StatusResponse),
     PingResponse(PingResponse),
 }
 
@@ -21,7 +22,7 @@ impl StatusServerBoundPacket {
         }
     }
 
-    pub fn decode<R: Read>(type_id: u8, reader: &mut R) -> Result<Self, DecodePacketError> {
+    pub fn decode<R: Read>(type_id: u8, reader: &mut R) -> Result<Self, DecodeError> {
         match type_id {
             0x0 => Ok(StatusServerBoundPacket::StatusRequest),
             0x1 => {
@@ -29,7 +30,7 @@ impl StatusServerBoundPacket {
 
                 Ok(StatusServerBoundPacket::PingRequest(ping_request))
             }
-            _ => Err(DecodePacketError::UnknownPacketType { type_id }),
+            _ => Err(DecodeError::UnknownPacketType { type_id }),
         }
     }
 }
@@ -37,7 +38,7 @@ impl StatusServerBoundPacket {
 impl StatusClientBoundPacket {
     pub fn get_type_id(&self) -> u8 {
         match self {
-            StatusClientBoundPacket::StatusResponse => 0x0,
+            StatusClientBoundPacket::StatusResponse(_) => 0x0,
             StatusClientBoundPacket::PingResponse(_) => 0x1,
         }
     }
@@ -58,13 +59,13 @@ impl PingRequest {
 impl Packet for PingRequest {
     type Output = Self;
 
-    fn encode<W: Write>(&self, writer: &mut W) -> Result<(), io::Error> {
+    fn encode<W: Write>(&self, writer: &mut W) -> Result<(), EncodeError> {
         writer.write_u64::<BigEndian>(self.time)?;
 
         Ok(())
     }
 
-    fn decode<R: Read>(reader: &mut R) -> Result<Self::Output, DecodePacketError> {
+    fn decode<R: Read>(reader: &mut R) -> Result<Self::Output, DecodeError> {
         let time = reader.read_u64::<BigEndian>()?;
 
         Ok(PingRequest { time })
@@ -86,15 +87,71 @@ impl PingResponse {
 impl Packet for PingResponse {
     type Output = Self;
 
-    fn encode<W: Write>(&self, writer: &mut W) -> Result<(), io::Error> {
+    fn encode<W: Write>(&self, writer: &mut W) -> Result<(), EncodeError> {
         writer.write_u64::<BigEndian>(self.time)?;
 
         Ok(())
     }
 
-    fn decode<R: Read>(reader: &mut R) -> Result<Self::Output, DecodePacketError> {
+    fn decode<R: Read>(reader: &mut R) -> Result<Self::Output, DecodeError> {
         let time = reader.read_u64::<BigEndian>()?;
 
         Ok(PingResponse { time })
+    }
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct ServerStatus {
+    pub version: ServerVersion,
+    pub description: String,
+    pub players: OnlinePlayers,
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct ServerVersion {
+    pub name: String,
+    pub protocol: u32,
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct OnlinePlayers {
+    pub online: u32,
+    pub max: u32,
+    pub sample: Vec<OnlinePlayer>,
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct OnlinePlayer {
+    pub id: Uuid,
+    pub name: String,
+}
+
+pub struct StatusResponse {
+    pub server_status: ServerStatus,
+}
+
+impl StatusResponse {
+    pub fn new(server_status: ServerStatus) -> StatusClientBoundPacket {
+        let status_response = StatusResponse { server_status };
+
+        StatusClientBoundPacket::StatusResponse(status_response)
+    }
+}
+
+impl Packet for StatusResponse {
+    type Output = Self;
+
+    fn encode<W: Write>(&self, writer: &mut W) -> Result<(), EncodeError> {
+        let json = serde_json::to_string(&self.server_status)?;
+        writer.write_string(&json)?;
+
+        Ok(())
+    }
+
+    fn decode<R: Read>(reader: &mut R) -> Result<Self::Output, DecodeError> {
+        let server_status = serde_json::from_reader(reader)?;
+        let status_response = StatusResponse { server_status };
+
+        Ok(status_response)
     }
 }
