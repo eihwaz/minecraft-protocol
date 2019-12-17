@@ -17,15 +17,15 @@ pub enum StatusClientBoundPacket {
 impl StatusServerBoundPacket {
     pub fn get_type_id(&self) -> u8 {
         match self {
-            StatusServerBoundPacket::StatusRequest => 0x0,
-            StatusServerBoundPacket::PingRequest(_) => 0x1,
+            StatusServerBoundPacket::StatusRequest => 0x00,
+            StatusServerBoundPacket::PingRequest(_) => 0x01,
         }
     }
 
     pub fn decode<R: Read>(type_id: u8, reader: &mut R) -> Result<Self, DecodeError> {
         match type_id {
-            0x0 => Ok(StatusServerBoundPacket::StatusRequest),
-            0x1 => {
+            0x00 => Ok(StatusServerBoundPacket::StatusRequest),
+            0x01 => {
                 let ping_request = PingRequest::decode(reader)?;
 
                 Ok(StatusServerBoundPacket::PingRequest(ping_request))
@@ -38,8 +38,8 @@ impl StatusServerBoundPacket {
 impl StatusClientBoundPacket {
     pub fn get_type_id(&self) -> u8 {
         match self {
-            StatusClientBoundPacket::StatusResponse(_) => 0x0,
-            StatusClientBoundPacket::PingResponse(_) => 0x1,
+            StatusClientBoundPacket::StatusResponse(_) => 0x00,
+            StatusClientBoundPacket::PingResponse(_) => 0x01,
         }
     }
 }
