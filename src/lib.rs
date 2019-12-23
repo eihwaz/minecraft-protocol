@@ -7,6 +7,8 @@ use serde_json::error::Error as JsonError;
 use std::io;
 use std::io::{Read, Write};
 use std::string::FromUtf8Error;
+
+pub mod chat;
 pub mod status;
 
 /// Current supported protocol version.

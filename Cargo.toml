@@ -10,9 +10,6 @@ repository = "https://github.com/eihwaz/minecraft-protocol"
 keywords = ["minecraft", "protocol", "packet", "io"]
 readme = "README.md"
 
-[lib]
-name = "mcpl"
-
 [dependencies]
 byteorder = "1"
 serde = { version = "1.0", features = ["derive"] }
