@@ -1,13 +1,18 @@
 //! This crate implements Minecraft protocol.
 //!
 //! Information about protocol can be found at https://wiki.vg/Protocol.
-use byteorder::{ReadBytesExt, WriteBytesExt};
 use io::Error as IoError;
-use mc_varint::{VarIntRead, VarIntWrite};
-use serde_json::error::Error as JsonError;
 use std::io;
 use std::io::{Read, Write};
 use std::string::FromUtf8Error;
+
+use byteorder::ReadBytesExt;
+use byteorder::WriteBytesExt;
+use mc_varint::{VarIntRead, VarIntWrite};
+use serde_json::error::Error as JsonError;
+use uuid::parser::ParseError as UuidParseError;
+
+use crate::chat::Message;
 
 pub mod chat;
 pub mod login;
@@ -72,6 +77,9 @@ pub enum DecodeError {
     },
     /// Boolean are parsed from byte. Valid byte value are 0 or 1.
     NonBoolValue,
+    UuidParseError {
+        uuid_parse_error: UuidParseError,
+    },
 }
 
 impl From<IoError> for DecodeError {
@@ -92,6 +100,12 @@ impl From<FromUtf8Error> for DecodeError {
     }
 }
 
+impl From<UuidParseError> for DecodeError {
+    fn from(uuid_parse_error: UuidParseError) -> Self {
+        DecodeError::UuidParseError { uuid_parse_error }
+    }
+}
+
 trait Packet {
     type Output;
 
@@ -107,6 +121,8 @@ trait PacketRead {
     fn read_string(&mut self, max_length: u32) -> Result<String, DecodeError>;
 
     fn read_byte_array(&mut self) -> Result<Vec<u8>, DecodeError>;
+
+    fn read_chat_message(&mut self) -> Result<Message, DecodeError>;
 }
 
 /// Trait adds additional helper methods for `Write` to write protocol data.
@@ -116,6 +132,8 @@ trait PacketWrite {
     fn write_string(&mut self, value: &str, max_length: u32) -> Result<(), EncodeError>;
 
     fn write_byte_array(&mut self, value: &[u8]) -> Result<(), EncodeError>;
+
+    fn write_chat_message(&mut self, value: &Message) -> Result<(), EncodeError>;
 }
 
 impl<R: Read> PacketRead for R {
@@ -148,6 +166,13 @@ impl<R: Read> PacketRead for R {
 
         Ok(buf)
     }
+
+    fn read_chat_message(&mut self) -> Result<Message, DecodeError> {
+        let json = self.read_string(STRING_MAX_LENGTH)?;
+        let message = Message::from_json(&json)?;
+
+        Ok(message)
+    }
 }
 
 impl<W: Write> PacketWrite for W {
@@ -179,5 +204,9 @@ impl<W: Write> PacketWrite for W {
         self.write_all(value)?;
 
         Ok(())
+    }
+
+    fn write_chat_message(&mut self, value: &Message) -> Result<(), EncodeError> {
+        self.write_string(&value.to_json()?, STRING_MAX_LENGTH)
     }
 }
