@@ -45,7 +45,7 @@ impl StatusClientBoundPacket {
 }
 
 pub struct PingRequest {
-    time: u64,
+    pub time: u64,
 }
 
 impl PingRequest {
@@ -73,7 +73,7 @@ impl Packet for PingRequest {
 }
 
 pub struct PingResponse {
-    time: u64,
+    pub time: u64,
 }
 
 impl PingResponse {
