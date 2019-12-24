@@ -59,6 +59,53 @@ impl LoginServerBoundPacket {
     }
 }
 
+impl LoginClientBoundPacket {
+    pub fn get_type_id(&self) -> u8 {
+        match self {
+            LoginClientBoundPacket::LoginDisconnect(_) => 0x00,
+            LoginClientBoundPacket::EncryptionRequest(_) => 0x01,
+            LoginClientBoundPacket::LoginSuccess(_) => 0x02,
+            LoginClientBoundPacket::SetCompression(_) => 0x03,
+            LoginClientBoundPacket::LoginPluginRequest(_) => 0x04,
+        }
+    }
+
+    pub fn decode<R: Read>(type_id: u8, reader: &mut R) -> Result<Self, DecodeError> {
+        match type_id {
+            0x00 => {
+                let login_disconnect = LoginDisconnect::decode(reader)?;
+
+                Ok(LoginClientBoundPacket::LoginDisconnect(login_disconnect))
+            }
+            0x01 => {
+                let encryption_request = EncryptionRequest::decode(reader)?;
+
+                Ok(LoginClientBoundPacket::EncryptionRequest(
+                    encryption_request,
+                ))
+            }
+            0x02 => {
+                let login_success = LoginSuccess::decode(reader)?;
+
+                Ok(LoginClientBoundPacket::LoginSuccess(login_success))
+            }
+            0x03 => {
+                let set_compression = SetCompression::decode(reader)?;
+
+                Ok(LoginClientBoundPacket::SetCompression(set_compression))
+            }
+            0x04 => {
+                let login_plugin_request = LoginPluginRequest::decode(reader)?;
+
+                Ok(LoginClientBoundPacket::LoginPluginRequest(
+                    login_plugin_request,
+                ))
+            }
+            _ => Err(DecodeError::UnknownPacketType { type_id }),
+        }
+    }
+}
+
 pub struct LoginStart {
     pub name: String,
 }
