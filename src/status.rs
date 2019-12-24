@@ -1,4 +1,4 @@
-use crate::{DecodeError, EncodeError, Packet, PacketWrite};
+use crate::{DecodeError, EncodeError, Packet, PacketWrite, STRING_MAX_LENGTH};
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
 use std::io::{Read, Write};
@@ -143,7 +143,7 @@ impl Packet for StatusResponse {
 
     fn encode<W: Write>(&self, writer: &mut W) -> Result<(), EncodeError> {
         let json = serde_json::to_string(&self.server_status)?;
-        writer.write_string(&json)?;
+        writer.write_string(&json, STRING_MAX_LENGTH)?;
 
         Ok(())
     }
