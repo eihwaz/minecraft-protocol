@@ -1,8 +1,10 @@
-use crate::{DecodeError, EncodeError, Packet, PacketWrite, STRING_MAX_LENGTH};
+use std::io::{Read, Write};
+
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
-use std::io::{Read, Write};
 use uuid::Uuid;
+
+use crate::{DecodeError, EncodeError, Packet, PacketWrite, STRING_MAX_LENGTH};
 
 pub enum StatusServerBoundPacket {
     StatusRequest,
