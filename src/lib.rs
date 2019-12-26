@@ -13,6 +13,7 @@ use serde_json::error::Error as JsonError;
 use uuid::parser::ParseError as UuidParseError;
 
 use crate::chat::Message;
+use num_traits::{FromPrimitive, ToPrimitive};
 
 pub mod chat;
 pub mod game;
@@ -128,6 +129,8 @@ trait PacketRead {
     fn read_byte_array(&mut self) -> Result<Vec<u8>, DecodeError>;
 
     fn read_chat_message(&mut self) -> Result<Message, DecodeError>;
+
+    fn read_enum<T: FromPrimitive>(&mut self) -> Result<T, DecodeError>;
 }
 
 /// Trait adds additional helper methods for `Write` to write protocol data.
@@ -139,6 +142,8 @@ trait PacketWrite {
     fn write_byte_array(&mut self, value: &[u8]) -> Result<(), EncodeError>;
 
     fn write_chat_message(&mut self, value: &Message) -> Result<(), EncodeError>;
+
+    fn write_enum<T: ToPrimitive>(&mut self, value: &T) -> Result<(), EncodeError>;
 }
 
 impl<R: Read> PacketRead for R {
@@ -178,6 +183,13 @@ impl<R: Read> PacketRead for R {
 
         Ok(message)
     }
+
+    fn read_enum<T: FromPrimitive>(&mut self) -> Result<T, DecodeError> {
+        let type_id = self.read_u8()?;
+        let result = FromPrimitive::from_u8(type_id);
+
+        result.ok_or_else(|| DecodeError::UnknownEnumType { type_id })
+    }
 }
 
 impl<W: Write> PacketWrite for W {
@@ -213,5 +225,12 @@ impl<W: Write> PacketWrite for W {
 
     fn write_chat_message(&mut self, value: &Message) -> Result<(), EncodeError> {
         self.write_string(&value.to_json()?, STRING_MAX_LENGTH)
+    }
+
+    fn write_enum<T: ToPrimitive>(&mut self, value: &T) -> Result<(), EncodeError> {
+        let type_value = ToPrimitive::to_u8(value).unwrap();
+        self.write_u8(type_value)?;
+
+        Ok(())
     }
 }
