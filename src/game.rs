@@ -2,8 +2,7 @@ use std::io::{Read, Write};
 
 use byteorder::{ReadBytesExt, WriteBytesExt};
 use num_derive::{FromPrimitive, ToPrimitive};
-use num_traits::FromPrimitive;
-use num_traits::ToPrimitive;
+use num_traits::{FromPrimitive, ToPrimitive};
 
 use crate::chat::Message;
 use crate::{DecodeError, EncodeError, Packet, PacketRead, PacketWrite};
