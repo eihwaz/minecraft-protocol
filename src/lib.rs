@@ -15,6 +15,7 @@ use uuid::parser::ParseError as UuidParseError;
 use crate::chat::Message;
 
 pub mod chat;
+pub mod game;
 pub mod login;
 pub mod status;
 
@@ -79,6 +80,10 @@ pub enum DecodeError {
     NonBoolValue,
     UuidParseError {
         uuid_parse_error: UuidParseError,
+    },
+    // Type id was not parsed as valid enum value.
+    UnknownEnumType {
+        type_id: u8,
     },
 }
 

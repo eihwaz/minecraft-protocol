@@ -16,3 +16,5 @@ serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 uuid = { version = "0.7", features = ["v4", "serde"] }
 mc-varint = { git = "https://github.com/luojia65/mc-varint" }
+num-traits = "0.2"
+num-derive = "0.2"
