@@ -13,6 +13,8 @@ use serde_json::error::Error as JsonError;
 use uuid::parser::ParseError as UuidParseError;
 
 use crate::chat::Message;
+use nbt::decode::TagDecodeError;
+use nbt::CompoundTag;
 use num_traits::{FromPrimitive, ToPrimitive};
 
 pub mod chat;
@@ -86,6 +88,9 @@ pub enum DecodeError {
     UnknownEnumType {
         type_id: u8,
     },
+    TagDecodeError {
+        tag_decode_error: TagDecodeError,
+    },
 }
 
 impl From<IoError> for DecodeError {
@@ -112,6 +117,12 @@ impl From<UuidParseError> for DecodeError {
     }
 }
 
+impl From<TagDecodeError> for DecodeError {
+    fn from(tag_decode_error: TagDecodeError) -> Self {
+        DecodeError::TagDecodeError { tag_decode_error }
+    }
+}
+
 trait Packet {
     type Output;
 
@@ -131,6 +142,8 @@ trait PacketRead {
     fn read_chat_message(&mut self) -> Result<Message, DecodeError>;
 
     fn read_enum<T: FromPrimitive>(&mut self) -> Result<T, DecodeError>;
+
+    fn read_compound_tag(&mut self) -> Result<CompoundTag, DecodeError>;
 }
 
 /// Trait adds additional helper methods for `Write` to write protocol data.
@@ -144,6 +157,8 @@ trait PacketWrite {
     fn write_chat_message(&mut self, value: &Message) -> Result<(), EncodeError>;
 
     fn write_enum<T: ToPrimitive>(&mut self, value: &T) -> Result<(), EncodeError>;
+
+    fn write_compound_tag(&mut self, value: &CompoundTag) -> Result<(), EncodeError>;
 }
 
 impl<R: Read> PacketRead for R {
@@ -190,6 +205,10 @@ impl<R: Read> PacketRead for R {
 
         result.ok_or_else(|| DecodeError::UnknownEnumType { type_id })
     }
+
+    fn read_compound_tag(&mut self) -> Result<CompoundTag, DecodeError> {
+        Ok(nbt::decode::read_compound_tag(self)?)
+    }
 }
 
 impl<W: Write> PacketWrite for W {
@@ -230,6 +249,12 @@ impl<W: Write> PacketWrite for W {
     fn write_enum<T: ToPrimitive>(&mut self, value: &T) -> Result<(), EncodeError> {
         let type_value = ToPrimitive::to_u8(value).unwrap();
         self.write_u8(type_value)?;
+
+        Ok(())
+    }
+
+    fn write_compound_tag(&mut self, value: &CompoundTag) -> Result<(), EncodeError> {
+        nbt::encode::write_compound_tag(self, value.clone())?;
 
         Ok(())
     }

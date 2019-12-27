@@ -6,6 +6,7 @@ use num_derive::{FromPrimitive, ToPrimitive};
 use crate::chat::Message;
 use crate::{DecodeError, EncodeError, Packet, PacketRead, PacketWrite};
 use mc_varint::{VarIntRead, VarIntWrite};
+use nbt::CompoundTag;
 
 const SERVER_BOUND_CHAT_MESSAGE_MAX_LENGTH: u32 = 256;
 const LEVEL_TYPE_MAX_LENGTH: u32 = 16;
@@ -19,6 +20,7 @@ pub enum GameClientBoundPacket {
     ClientBoundChatMessage(ClientBoundChatMessage),
     JoinGame(JoinGame),
     ClientBoundKeepAlive(ClientBoundKeepAlive),
+    ChunkData(ChunkData),
 }
 
 impl GameServerBoundPacket {
@@ -51,6 +53,7 @@ impl GameClientBoundPacket {
         match self {
             GameClientBoundPacket::ClientBoundChatMessage(_) => 0x0E,
             GameClientBoundPacket::ClientBoundKeepAlive(_) => 0x20,
+            GameClientBoundPacket::ChunkData(_) => 0x21,
             GameClientBoundPacket::JoinGame(_) => 0x25,
         }
     }
@@ -66,6 +69,11 @@ impl GameClientBoundPacket {
                 let keep_alive = ClientBoundKeepAlive::decode(reader)?;
 
                 Ok(GameClientBoundPacket::ClientBoundKeepAlive(keep_alive))
+            }
+            0x21 => {
+                let chunk_data = ChunkData::decode(reader)?;
+
+                Ok(GameClientBoundPacket::ChunkData(chunk_data))
             }
             0x25 => {
                 let join_game = JoinGame::decode(reader)?;
@@ -276,5 +284,86 @@ impl Packet for ClientBoundKeepAlive {
         let id = reader.read_u64::<BigEndian>()?;
 
         Ok(ClientBoundKeepAlive { id })
+    }
+}
+
+pub struct ChunkData {
+    pub x: i32,
+    pub z: i32,
+    pub full: bool,
+    pub primary_mask: u32,
+    pub heights: CompoundTag,
+    pub data: Vec<u8>,
+    pub tiles: Vec<CompoundTag>,
+}
+
+impl ChunkData {
+    pub fn new(
+        x: i32,
+        z: i32,
+        full: bool,
+        primary_mask: u32,
+        heights: CompoundTag,
+        data: Vec<u8>,
+        tiles: Vec<CompoundTag>,
+    ) -> GameClientBoundPacket {
+        let chunk_data = ChunkData {
+            x,
+            z,
+            full,
+            primary_mask,
+            heights,
+            data,
+            tiles,
+        };
+
+        GameClientBoundPacket::ChunkData(chunk_data)
+    }
+}
+
+impl Packet for ChunkData {
+    type Output = Self;
+
+    fn encode<W: Write>(&self, writer: &mut W) -> Result<(), EncodeError> {
+        writer.write_i32::<BigEndian>(self.x)?;
+        writer.write_i32::<BigEndian>(self.z)?;
+        writer.write_bool(self.full)?;
+        writer.write_var_u32(self.primary_mask)?;
+        writer.write_compound_tag(&self.heights)?;
+        writer.write_byte_array(&self.data)?;
+        writer.write_var_u32(self.tiles.len() as u32)?;
+
+        for tile_compound_tag in self.tiles.iter() {
+            writer.write_compound_tag(&tile_compound_tag)?;
+        }
+
+        Ok(())
+    }
+
+    fn decode<R: Read>(reader: &mut R) -> Result<Self::Output, DecodeError> {
+        let x = reader.read_i32::<BigEndian>()?;
+        let z = reader.read_i32::<BigEndian>()?;
+        let full = reader.read_bool()?;
+        let primary_mask = reader.read_var_u32()?;
+        let heights = reader.read_compound_tag()?;
+        let data = reader.read_byte_array()?;
+
+        let tiles_length = reader.read_var_u32()?;
+        let mut tiles = Vec::new();
+
+        for _ in 0..tiles_length {
+            let tile_compound_tag = reader.read_compound_tag()?;
+            tiles.push(tile_compound_tag);
+        }
+
+        Ok(ChunkData {
+            x,
+            z,
+            full,
+            primary_mask,
+            heights,
+            data,
+            tiles,
+        })
     }
 }
