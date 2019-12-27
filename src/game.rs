@@ -12,17 +12,20 @@ const LEVEL_TYPE_MAX_LENGTH: u32 = 16;
 
 pub enum GameServerBoundPacket {
     ServerBoundChatMessage(ServerBoundChatMessage),
+    ServerBoundKeepAlive(ServerBoundKeepAlive),
 }
 
 pub enum GameClientBoundPacket {
     ClientBoundChatMessage(ClientBoundChatMessage),
     JoinGame(JoinGame),
+    ClientBoundKeepAlive(ClientBoundKeepAlive),
 }
 
 impl GameServerBoundPacket {
     pub fn get_type_id(&self) -> u8 {
         match self {
             GameServerBoundPacket::ServerBoundChatMessage(_) => 0x03,
+            GameServerBoundPacket::ServerBoundKeepAlive(_) => 0x0F,
         }
     }
 
@@ -33,6 +36,11 @@ impl GameServerBoundPacket {
 
                 Ok(GameServerBoundPacket::ServerBoundChatMessage(chat_message))
             }
+            0x0F => {
+                let keep_alive = ServerBoundKeepAlive::decode(reader)?;
+
+                Ok(GameServerBoundPacket::ServerBoundKeepAlive(keep_alive))
+            }
             _ => Err(DecodeError::UnknownPacketType { type_id }),
         }
     }
@@ -42,6 +50,7 @@ impl GameClientBoundPacket {
     pub fn get_type_id(&self) -> u8 {
         match self {
             GameClientBoundPacket::ClientBoundChatMessage(_) => 0x0E,
+            GameClientBoundPacket::ClientBoundKeepAlive(_) => 0x20,
             GameClientBoundPacket::JoinGame(_) => 0x25,
         }
     }
@@ -52,6 +61,11 @@ impl GameClientBoundPacket {
                 let chat_message = ClientBoundChatMessage::decode(reader)?;
 
                 Ok(GameClientBoundPacket::ClientBoundChatMessage(chat_message))
+            }
+            0x20 => {
+                let keep_alive = ClientBoundKeepAlive::decode(reader)?;
+
+                Ok(GameClientBoundPacket::ClientBoundKeepAlive(keep_alive))
             }
             0x25 => {
                 let join_game = JoinGame::decode(reader)?;
@@ -206,5 +220,61 @@ impl Packet for JoinGame {
             view_distance,
             reduced_debug_info,
         })
+    }
+}
+
+pub struct ServerBoundKeepAlive {
+    pub id: u64,
+}
+
+impl ServerBoundKeepAlive {
+    pub fn new(id: u64) -> GameServerBoundPacket {
+        let keep_alive = ServerBoundKeepAlive { id };
+
+        GameServerBoundPacket::ServerBoundKeepAlive(keep_alive)
+    }
+}
+
+impl Packet for ServerBoundKeepAlive {
+    type Output = Self;
+
+    fn encode<W: Write>(&self, writer: &mut W) -> Result<(), EncodeError> {
+        writer.write_u64::<BigEndian>(self.id)?;
+
+        Ok(())
+    }
+
+    fn decode<R: Read>(reader: &mut R) -> Result<Self::Output, DecodeError> {
+        let id = reader.read_u64::<BigEndian>()?;
+
+        Ok(ServerBoundKeepAlive { id })
+    }
+}
+
+pub struct ClientBoundKeepAlive {
+    pub id: u64,
+}
+
+impl ClientBoundKeepAlive {
+    pub fn new(id: u64) -> GameClientBoundPacket {
+        let keep_alive = ClientBoundKeepAlive { id };
+
+        GameClientBoundPacket::ClientBoundKeepAlive(keep_alive)
+    }
+}
+
+impl Packet for ClientBoundKeepAlive {
+    type Output = Self;
+
+    fn encode<W: Write>(&self, writer: &mut W) -> Result<(), EncodeError> {
+        writer.write_u64::<BigEndian>(self.id)?;
+
+        Ok(())
+    }
+
+    fn decode<R: Read>(reader: &mut R) -> Result<Self::Output, DecodeError> {
+        let id = reader.read_u64::<BigEndian>()?;
+
+        Ok(ClientBoundKeepAlive { id })
     }
 }
