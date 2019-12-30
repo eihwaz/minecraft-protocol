@@ -28,6 +28,7 @@ pub const PROTOCOL_VERSION: usize = 498;
 const STRING_MAX_LENGTH: u32 = 32_768;
 
 /// Possible errors while encoding packet.
+#[derive(Debug)]
 pub enum EncodeError {
     /// String length can't be more than provided value.
     StringTooLong {
@@ -57,6 +58,7 @@ impl From<JsonError> for EncodeError {
 }
 
 /// Possible errors while decoding packet.
+#[derive(Debug)]
 pub enum DecodeError {
     /// Packet was not recognized. Invalid data or wrong protocol version.
     UnknownPacketType {
@@ -171,7 +173,7 @@ impl<R: Read> PacketRead for R {
     }
 
     fn read_string(&mut self, max_length: u32) -> Result<String, DecodeError> {
-        let length = self.read_var_u32()?;
+        let length = self.read_var_i32()? as u32;
 
         if length > max_length as u32 {
             return Err(DecodeError::StringTooLong { length, max_length });
@@ -229,7 +231,7 @@ impl<W: Write> PacketWrite for W {
             return Err(EncodeError::StringTooLong { length, max_length });
         }
 
-        self.write_var_u32(value.len() as u32)?;
+        self.write_var_i32(value.len() as i32)?;
         self.write_all(value.as_bytes())?;
 
         Ok(())

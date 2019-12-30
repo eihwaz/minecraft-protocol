@@ -106,7 +106,6 @@ impl LoginClientBoundPacket {
     }
 }
 
-#[derive(minecraft_protocol_derive::MinecraftPacket)]
 pub struct LoginStart {
     pub name: String,
 }
@@ -116,6 +115,20 @@ impl LoginStart {
         let login_start = LoginStart { name };
 
         LoginServerBoundPacket::LoginStart(login_start)
+    }
+}
+
+impl Packet for LoginStart {
+    type Output = Self;
+
+    fn encode<W: Write>(&self, writer: &mut W) -> Result<(), EncodeError> {
+        writer.write_string(&self.name, LOGIN_MAX_LENGTH)
+    }
+
+    fn decode<R: Read>(reader: &mut R) -> Result<Self::Output, DecodeError> {
+        let name = reader.read_string(LOGIN_MAX_LENGTH)?;
+
+        Ok(LoginStart { name })
     }
 }
 
@@ -377,5 +390,68 @@ impl Packet for LoginPluginRequest {
             channel,
             data,
         })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::login::LoginPluginResponse;
+    use crate::login::LoginStart;
+    use crate::Packet;
+    use std::io::Cursor;
+
+    #[test]
+    fn test_login_start_packet_encode() {
+        let login_start = LoginStart {
+            name: String::from("Username"),
+        };
+
+        let mut vec = Vec::new();
+        login_start.encode(&mut vec).unwrap();
+
+        assert_eq!(
+            vec,
+            include_bytes!("../test/packet/login/login_start.dat").to_vec()
+        );
+    }
+
+    #[test]
+    fn test_login_start_packet_decode() {
+        let mut cursor =
+            Cursor::new(include_bytes!("../test/packet/login/login_start.dat").to_vec());
+        let login_start = LoginStart::decode(&mut cursor).unwrap();
+
+        assert_eq!(login_start.name, String::from("Username"));
+    }
+
+    #[test]
+    fn test_login_plugin_response_encode() {
+        let login_plugin_response = LoginPluginResponse {
+            message_id: 55,
+            successful: true,
+            data: vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
+        };
+
+        let mut vec = Vec::new();
+        login_plugin_response.encode(&mut vec).unwrap();
+
+        assert_eq!(
+            vec,
+            include_bytes!("../test/packet/login/login_plugin_response.dat").to_vec()
+        );
+    }
+
+    #[test]
+    fn test_login_plugin_response_decode() {
+        let mut cursor =
+            Cursor::new(include_bytes!("../test/packet/login/login_plugin_response.dat").to_vec());
+        let login_plugin_response = LoginPluginResponse::decode(&mut cursor).unwrap();
+
+        assert_eq!(login_plugin_response.message_id, 55);
+        assert!(login_plugin_response.successful);
+        assert_eq!(
+            login_plugin_response.data,
+            vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+        );
     }
 }
