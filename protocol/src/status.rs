@@ -4,7 +4,8 @@ use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use crate::{DecodeError, EncodeError, PacketParser, PacketWrite, STRING_MAX_LENGTH};
+use crate::chat::Message;
+use crate::{DecodeError, EncodeError, PacketParser, PacketRead, PacketWrite, STRING_MAX_LENGTH};
 
 pub enum StatusServerBoundPacket {
     StatusRequest,
@@ -105,8 +106,8 @@ impl PacketParser for PingResponse {
 #[derive(Serialize, Deserialize)]
 pub struct ServerStatus {
     pub version: ServerVersion,
-    pub description: String,
     pub players: OnlinePlayers,
+    pub description: Message,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -117,15 +118,15 @@ pub struct ServerVersion {
 
 #[derive(Serialize, Deserialize)]
 pub struct OnlinePlayers {
-    pub online: u32,
     pub max: u32,
+    pub online: u32,
     pub sample: Vec<OnlinePlayer>,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug, Eq, PartialEq)]
 pub struct OnlinePlayer {
-    pub id: Uuid,
     pub name: String,
+    pub id: Uuid,
 }
 
 pub struct StatusResponse {
@@ -151,9 +152,128 @@ impl PacketParser for StatusResponse {
     }
 
     fn decode<R: Read>(reader: &mut R) -> Result<Self::Output, DecodeError> {
-        let server_status = serde_json::from_reader(reader)?;
+        let json = reader.read_string(STRING_MAX_LENGTH)?;
+        let server_status = serde_json::from_str(&json)?;
         let status_response = StatusResponse { server_status };
 
         Ok(status_response)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::chat::{Message, Payload};
+    use crate::status::{
+        OnlinePlayer, OnlinePlayers, PingRequest, PingResponse, ServerStatus, ServerVersion,
+        StatusResponse,
+    };
+    use crate::{PacketParser, PROTOCOL_VERSION};
+    use std::io::Cursor;
+    use uuid::Uuid;
+
+    #[test]
+    fn test_ping_request_encode() {
+        let ping_request = PingRequest {
+            time: 1577735845610,
+        };
+
+        let mut vec = Vec::new();
+        ping_request.encode(&mut vec).unwrap();
+
+        assert_eq!(
+            vec,
+            include_bytes!("../test/packet/status/ping_request.dat").to_vec()
+        );
+    }
+
+    #[test]
+    fn test_status_ping_request_decode() {
+        let mut cursor =
+            Cursor::new(include_bytes!("../test/packet/status/ping_request.dat").to_vec());
+        let ping_request = PingRequest::decode(&mut cursor).unwrap();
+
+        assert_eq!(ping_request.time, 1577735845610);
+    }
+
+    #[test]
+    fn test_ping_response_encode() {
+        let ping_response = PingResponse {
+            time: 1577735845610,
+        };
+
+        let mut vec = Vec::new();
+        ping_response.encode(&mut vec).unwrap();
+
+        assert_eq!(
+            vec,
+            include_bytes!("../test/packet/status/ping_response.dat").to_vec()
+        );
+    }
+
+    #[test]
+    fn test_status_ping_response_decode() {
+        let mut cursor =
+            Cursor::new(include_bytes!("../test/packet/status/ping_response.dat").to_vec());
+        let ping_response = PingResponse::decode(&mut cursor).unwrap();
+
+        assert_eq!(ping_response.time, 1577735845610);
+    }
+
+    #[test]
+    fn test_status_response_encode() {
+        let version = ServerVersion {
+            name: String::from("1.15.1"),
+            protocol: PROTOCOL_VERSION,
+        };
+
+        let player = OnlinePlayer {
+            id: Uuid::parse_str("2a1e1912-7103-4add-80fc-91ebc346cbce").unwrap(),
+            name: String::from("Username"),
+        };
+
+        let players = OnlinePlayers {
+            online: 10,
+            max: 100,
+            sample: vec![player],
+        };
+
+        let server_status = ServerStatus {
+            version,
+            description: Message::new(Payload::text("Description")),
+            players,
+        };
+
+        let status_response = StatusResponse { server_status };
+
+        let mut vec = Vec::new();
+        status_response.encode(&mut vec).unwrap();
+
+        assert_eq!(
+            vec,
+            include_bytes!("../test/packet/status/status_response.dat").to_vec()
+        );
+    }
+
+    #[test]
+    fn test_status_response_decode() {
+        let mut cursor =
+            Cursor::new(include_bytes!("../test/packet/status/status_response.dat").to_vec());
+        let status_response = StatusResponse::decode(&mut cursor).unwrap();
+        let server_status = status_response.server_status;
+
+        let player = OnlinePlayer {
+            id: Uuid::parse_str("2a1e1912-7103-4add-80fc-91ebc346cbce").unwrap(),
+            name: String::from("Username"),
+        };
+
+        assert_eq!(server_status.version.name, String::from("1.15.1"));
+        assert_eq!(server_status.version.protocol, 575);
+        assert_eq!(server_status.players.max, 100);
+        assert_eq!(server_status.players.online, 10);
+        assert_eq!(server_status.players.sample, vec![player]);
+        assert_eq!(
+            server_status.description,
+            Message::new(Payload::text("Description"))
+        );
     }
 }

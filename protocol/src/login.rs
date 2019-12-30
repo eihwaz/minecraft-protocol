@@ -395,7 +395,7 @@ impl PacketParser for LoginPluginRequest {
 
 #[cfg(test)]
 mod tests {
-    use crate::chat::{MessageBuilder, Payload};
+    use crate::chat::{Message, Payload};
     use crate::login::{EncryptionRequest, LoginDisconnect, LoginPluginRequest, SetCompression};
     use crate::login::{EncryptionResponse, LoginPluginResponse};
     use crate::login::{LoginStart, LoginSuccess};
@@ -490,7 +490,7 @@ mod tests {
     #[test]
     fn test_login_disconnect_encode() {
         let login_disconnect = LoginDisconnect {
-            reason: MessageBuilder::builder(Payload::text("Message")).build(),
+            reason: Message::new(Payload::text("Message")),
         };
 
         let mut vec = Vec::new();
@@ -510,7 +510,7 @@ mod tests {
 
         assert_eq!(
             login_disconnect.reason,
-            MessageBuilder::builder(Payload::text("Message")).build()
+            Message::new(Payload::text("Description"))
         );
     }
 
