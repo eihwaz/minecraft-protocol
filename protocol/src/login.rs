@@ -106,6 +106,7 @@ impl LoginClientBoundPacket {
     }
 }
 
+#[derive(minecraft_protocol_derive::MinecraftPacket)]
 pub struct LoginStart {
     pub name: String,
 }
@@ -115,20 +116,6 @@ impl LoginStart {
         let login_start = LoginStart { name };
 
         LoginServerBoundPacket::LoginStart(login_start)
-    }
-}
-
-impl Packet for LoginStart {
-    type Output = Self;
-
-    fn encode<W: Write>(&self, writer: &mut W) -> Result<(), EncodeError> {
-        writer.write_string(&self.name, LOGIN_MAX_LENGTH)
-    }
-
-    fn decode<R: Read>(reader: &mut R) -> Result<Self::Output, DecodeError> {
-        let name = reader.read_string(LOGIN_MAX_LENGTH)?;
-
-        Ok(LoginStart { name })
     }
 }
 
