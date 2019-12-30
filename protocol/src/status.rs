@@ -4,7 +4,7 @@ use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use crate::{DecodeError, EncodeError, Packet, PacketWrite, STRING_MAX_LENGTH};
+use crate::{DecodeError, EncodeError, PacketParser, PacketWrite, STRING_MAX_LENGTH};
 
 pub enum StatusServerBoundPacket {
     StatusRequest,
@@ -58,7 +58,7 @@ impl PingRequest {
     }
 }
 
-impl Packet for PingRequest {
+impl PacketParser for PingRequest {
     type Output = Self;
 
     fn encode<W: Write>(&self, writer: &mut W) -> Result<(), EncodeError> {
@@ -86,7 +86,7 @@ impl PingResponse {
     }
 }
 
-impl Packet for PingResponse {
+impl PacketParser for PingResponse {
     type Output = Self;
 
     fn encode<W: Write>(&self, writer: &mut W) -> Result<(), EncodeError> {
@@ -140,7 +140,7 @@ impl StatusResponse {
     }
 }
 
-impl Packet for StatusResponse {
+impl PacketParser for StatusResponse {
     type Output = Self;
 
     fn encode<W: Write>(&self, writer: &mut W) -> Result<(), EncodeError> {

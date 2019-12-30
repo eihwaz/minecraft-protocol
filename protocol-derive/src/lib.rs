@@ -10,7 +10,7 @@ pub fn derive_packet(input: TokenStream) -> TokenStream {
     let name = input.ident;
 
     let output = quote! {
-        impl crate::Packet for #name {
+        impl crate::PacketParser for #name {
             type Output = Self;
 
             fn encode<W: Write>(&self, writer: &mut W) -> Result<(), EncodeError> {

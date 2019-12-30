@@ -4,7 +4,7 @@ use mc_varint::{VarIntRead, VarIntWrite};
 use uuid::Uuid;
 
 use crate::chat::Message;
-use crate::{DecodeError, EncodeError, Packet, PacketRead, PacketWrite, STRING_MAX_LENGTH};
+use crate::{DecodeError, EncodeError, PacketParser, PacketRead, PacketWrite, STRING_MAX_LENGTH};
 
 const LOGIN_MAX_LENGTH: u32 = 16;
 const SERVER_ID_MAX_LENGTH: u32 = 20;
@@ -118,7 +118,7 @@ impl LoginStart {
     }
 }
 
-impl Packet for LoginStart {
+impl PacketParser for LoginStart {
     type Output = Self;
 
     fn encode<W: Write>(&self, writer: &mut W) -> Result<(), EncodeError> {
@@ -148,7 +148,7 @@ impl EncryptionResponse {
     }
 }
 
-impl Packet for EncryptionResponse {
+impl PacketParser for EncryptionResponse {
     type Output = Self;
 
     fn encode<W: Write>(&self, writer: &mut W) -> Result<(), EncodeError> {
@@ -187,7 +187,7 @@ impl LoginPluginResponse {
     }
 }
 
-impl Packet for LoginPluginResponse {
+impl PacketParser for LoginPluginResponse {
     type Output = Self;
 
     fn encode<W: Write>(&self, writer: &mut W) -> Result<(), EncodeError> {
@@ -225,7 +225,7 @@ impl LoginDisconnect {
     }
 }
 
-impl Packet for LoginDisconnect {
+impl PacketParser for LoginDisconnect {
     type Output = Self;
 
     fn encode<W: Write>(&self, writer: &mut W) -> Result<(), EncodeError> {
@@ -263,7 +263,7 @@ impl EncryptionRequest {
     }
 }
 
-impl Packet for EncryptionRequest {
+impl PacketParser for EncryptionRequest {
     type Output = Self;
 
     fn encode<W: Write>(&self, writer: &mut W) -> Result<(), EncodeError> {
@@ -300,7 +300,7 @@ impl LoginSuccess {
     }
 }
 
-impl Packet for LoginSuccess {
+impl PacketParser for LoginSuccess {
     type Output = Self;
 
     fn encode<W: Write>(&self, writer: &mut W) -> Result<(), EncodeError> {
@@ -334,7 +334,7 @@ impl SetCompression {
     }
 }
 
-impl Packet for SetCompression {
+impl PacketParser for SetCompression {
     type Output = Self;
 
     fn encode<W: Write>(&self, writer: &mut W) -> Result<(), EncodeError> {
@@ -368,7 +368,7 @@ impl LoginPluginRequest {
     }
 }
 
-impl Packet for LoginPluginRequest {
+impl PacketParser for LoginPluginRequest {
     type Output = Self;
 
     fn encode<W: Write>(&self, writer: &mut W) -> Result<(), EncodeError> {
@@ -397,7 +397,7 @@ impl Packet for LoginPluginRequest {
 mod tests {
     use crate::login::LoginPluginResponse;
     use crate::login::LoginStart;
-    use crate::Packet;
+    use crate::PacketParser;
     use std::io::Cursor;
 
     #[test]

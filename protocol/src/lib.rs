@@ -125,7 +125,7 @@ impl From<TagDecodeError> for DecodeError {
     }
 }
 
-trait Packet {
+trait PacketParser {
     type Output;
 
     fn encode<W: Write>(&self, writer: &mut W) -> Result<(), EncodeError>;

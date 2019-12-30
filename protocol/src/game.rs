@@ -4,7 +4,7 @@ use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 use num_derive::{FromPrimitive, ToPrimitive};
 
 use crate::chat::Message;
-use crate::{DecodeError, EncodeError, Packet, PacketRead, PacketWrite};
+use crate::{DecodeError, EncodeError, PacketParser, PacketRead, PacketWrite};
 use mc_varint::{VarIntRead, VarIntWrite};
 use nbt::CompoundTag;
 
@@ -97,7 +97,7 @@ impl ServerBoundChatMessage {
     }
 }
 
-impl Packet for ServerBoundChatMessage {
+impl PacketParser for ServerBoundChatMessage {
     type Output = Self;
 
     fn encode<W: Write>(&self, writer: &mut W) -> Result<(), EncodeError> {
@@ -131,7 +131,7 @@ impl ClientBoundChatMessage {
     }
 }
 
-impl Packet for ClientBoundChatMessage {
+impl PacketParser for ClientBoundChatMessage {
     type Output = Self;
 
     fn encode<W: Write>(&self, writer: &mut W) -> Result<(), EncodeError> {
@@ -195,7 +195,7 @@ impl JoinGame {
     }
 }
 
-impl Packet for JoinGame {
+impl PacketParser for JoinGame {
     type Output = Self;
 
     fn encode<W: Write>(&self, writer: &mut W) -> Result<(), EncodeError> {
@@ -243,7 +243,7 @@ impl ServerBoundKeepAlive {
     }
 }
 
-impl Packet for ServerBoundKeepAlive {
+impl PacketParser for ServerBoundKeepAlive {
     type Output = Self;
 
     fn encode<W: Write>(&self, writer: &mut W) -> Result<(), EncodeError> {
@@ -271,7 +271,7 @@ impl ClientBoundKeepAlive {
     }
 }
 
-impl Packet for ClientBoundKeepAlive {
+impl PacketParser for ClientBoundKeepAlive {
     type Output = Self;
 
     fn encode<W: Write>(&self, writer: &mut W) -> Result<(), EncodeError> {
@@ -321,7 +321,7 @@ impl ChunkData {
     }
 }
 
-impl Packet for ChunkData {
+impl PacketParser for ChunkData {
     type Output = Self;
 
     fn encode<W: Write>(&self, writer: &mut W) -> Result<(), EncodeError> {
