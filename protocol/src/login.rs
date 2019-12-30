@@ -395,10 +395,13 @@ impl PacketParser for LoginPluginRequest {
 
 #[cfg(test)]
 mod tests {
-    use crate::login::LoginStart;
+    use crate::chat::{MessageBuilder, Payload};
+    use crate::login::{EncryptionRequest, LoginDisconnect, LoginPluginRequest, SetCompression};
     use crate::login::{EncryptionResponse, LoginPluginResponse};
+    use crate::login::{LoginStart, LoginSuccess};
     use crate::PacketParser;
     use std::io::Cursor;
+    use uuid::Uuid;
 
     #[test]
     fn test_login_start_packet_encode() {
@@ -480,6 +483,147 @@ mod tests {
         assert!(login_plugin_response.successful);
         assert_eq!(
             login_plugin_response.data,
+            vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+        );
+    }
+
+    #[test]
+    fn test_login_disconnect_encode() {
+        let login_disconnect = LoginDisconnect {
+            reason: MessageBuilder::builder(Payload::text("Message")).build(),
+        };
+
+        let mut vec = Vec::new();
+        login_disconnect.encode(&mut vec).unwrap();
+
+        assert_eq!(
+            vec,
+            include_bytes!("../test/packet/login/login_disconnect.dat").to_vec()
+        );
+    }
+
+    #[test]
+    fn test_login_disconnect_decode() {
+        let mut cursor =
+            Cursor::new(include_bytes!("../test/packet/login/login_disconnect.dat").to_vec());
+        let login_disconnect = LoginDisconnect::decode(&mut cursor).unwrap();
+
+        assert_eq!(
+            login_disconnect.reason,
+            MessageBuilder::builder(Payload::text("Message")).build()
+        );
+    }
+
+    #[test]
+    fn test_encryption_request_encode() {
+        let encryption_request = EncryptionRequest {
+            server_id: String::from("ServerID"),
+            public_key: vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
+            verify_token: vec![1, 2, 3, 4],
+        };
+
+        let mut vec = Vec::new();
+        encryption_request.encode(&mut vec).unwrap();
+
+        assert_eq!(
+            vec,
+            include_bytes!("../test/packet/login/encryption_request.dat").to_vec()
+        );
+    }
+
+    #[test]
+    fn test_encryption_request_decode() {
+        let mut cursor =
+            Cursor::new(include_bytes!("../test/packet/login/encryption_request.dat").to_vec());
+        let encryption_request = EncryptionRequest::decode(&mut cursor).unwrap();
+
+        assert_eq!(encryption_request.server_id, String::from("ServerID"));
+        assert_eq!(
+            encryption_request.public_key,
+            vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+        );
+        assert_eq!(encryption_request.verify_token, vec![1, 2, 3, 4]);
+    }
+
+    #[test]
+    fn test_login_success_encode() {
+        let login_success = LoginSuccess {
+            uuid: Uuid::parse_str("35ee313b-d89a-41b8-b25e-d32e8aff0389").unwrap(),
+            username: String::from("Username"),
+        };
+
+        let mut vec = Vec::new();
+        login_success.encode(&mut vec).unwrap();
+
+        assert_eq!(
+            vec,
+            include_bytes!("../test/packet/login/login_success.dat").to_vec()
+        );
+    }
+
+    #[test]
+    fn test_login_success_decode() {
+        let mut cursor =
+            Cursor::new(include_bytes!("../test/packet/login/login_success.dat").to_vec());
+        let login_success = LoginSuccess::decode(&mut cursor).unwrap();
+
+        assert_eq!(login_success.username, String::from("Username"));
+
+        assert_eq!(
+            login_success.uuid,
+            Uuid::parse_str("35ee313b-d89a-41b8-b25e-d32e8aff0389").unwrap()
+        );
+    }
+
+    #[test]
+    fn test_set_compression_encode() {
+        let set_compression = SetCompression { threshold: 1 };
+
+        let mut vec = Vec::new();
+        set_compression.encode(&mut vec).unwrap();
+
+        assert_eq!(
+            vec,
+            include_bytes!("../test/packet/login/login_set_compression.dat").to_vec()
+        );
+    }
+
+    #[test]
+    fn test_set_compression_decode() {
+        let mut cursor =
+            Cursor::new(include_bytes!("../test/packet/login/login_set_compression.dat").to_vec());
+        let set_compression = SetCompression::decode(&mut cursor).unwrap();
+
+        assert_eq!(set_compression.threshold, 1);
+    }
+
+    #[test]
+    fn test_login_plugin_request_encode() {
+        let login_plugin_request = LoginPluginRequest {
+            message_id: 55,
+            channel: String::from("Channel"),
+            data: vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
+        };
+
+        let mut vec = Vec::new();
+        login_plugin_request.encode(&mut vec).unwrap();
+
+        assert_eq!(
+            vec,
+            include_bytes!("../test/packet/login/login_plugin_request.dat").to_vec()
+        );
+    }
+
+    #[test]
+    fn test_login_plugin_request_decode() {
+        let mut cursor =
+            Cursor::new(include_bytes!("../test/packet/login/login_plugin_request.dat").to_vec());
+        let login_plugin_request = LoginPluginRequest::decode(&mut cursor).unwrap();
+
+        assert_eq!(login_plugin_request.message_id, 55);
+        assert_eq!(login_plugin_request.channel, String::from("Channel"));
+        assert_eq!(
+            login_plugin_request.data,
             vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
         );
     }
