@@ -395,8 +395,8 @@ impl PacketParser for LoginPluginRequest {
 
 #[cfg(test)]
 mod tests {
-    use crate::login::LoginPluginResponse;
     use crate::login::LoginStart;
+    use crate::login::{EncryptionResponse, LoginPluginResponse};
     use crate::PacketParser;
     use std::io::Cursor;
 
@@ -422,6 +422,35 @@ mod tests {
         let login_start = LoginStart::decode(&mut cursor).unwrap();
 
         assert_eq!(login_start.name, String::from("Username"));
+    }
+
+    #[test]
+    fn test_encryption_response_encode() {
+        let encryption_response = EncryptionResponse {
+            shared_secret: vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
+            verify_token: vec![1, 2, 3, 4],
+        };
+
+        let mut vec = Vec::new();
+        encryption_response.encode(&mut vec).unwrap();
+
+        assert_eq!(
+            vec,
+            include_bytes!("../test/packet/login/encryption_response.dat").to_vec()
+        );
+    }
+
+    #[test]
+    fn test_encryption_response_decode() {
+        let mut cursor =
+            Cursor::new(include_bytes!("../test/packet/login/encryption_response.dat").to_vec());
+        let encryption_response = EncryptionResponse::decode(&mut cursor).unwrap();
+
+        assert_eq!(
+            encryption_response.shared_secret,
+            vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+        );
+        assert_eq!(encryption_response.verify_token, vec![1, 2, 3, 4]);
     }
 
     #[test]

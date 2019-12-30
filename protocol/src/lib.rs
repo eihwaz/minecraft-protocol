@@ -186,7 +186,7 @@ impl<R: Read> PacketRead for R {
     }
 
     fn read_byte_array(&mut self) -> Result<Vec<u8>, DecodeError> {
-        let length = self.read_var_u32()?;
+        let length = self.read_var_i32()?;
 
         let mut buf = vec![0; length as usize];
         self.read_exact(&mut buf)?;
@@ -238,7 +238,7 @@ impl<W: Write> PacketWrite for W {
     }
 
     fn write_byte_array(&mut self, value: &[u8]) -> Result<(), EncodeError> {
-        self.write_var_u32(value.len() as u32)?;
+        self.write_var_i32(value.len() as i32)?;
         self.write_all(value)?;
 
         Ok(())
