@@ -291,7 +291,7 @@ pub struct ChunkData {
     pub x: i32,
     pub z: i32,
     pub full: bool,
-    pub primary_mask: u32,
+    pub primary_mask: i32,
     pub heights: CompoundTag,
     pub data: Vec<u8>,
     pub tiles: Vec<CompoundTag>,
@@ -302,7 +302,7 @@ impl ChunkData {
         x: i32,
         z: i32,
         full: bool,
-        primary_mask: u32,
+        primary_mask: i32,
         heights: CompoundTag,
         data: Vec<u8>,
         tiles: Vec<CompoundTag>,
@@ -328,10 +328,10 @@ impl PacketParser for ChunkData {
         writer.write_i32::<BigEndian>(self.x)?;
         writer.write_i32::<BigEndian>(self.z)?;
         writer.write_bool(self.full)?;
-        writer.write_var_u32(self.primary_mask)?;
+        writer.write_var_i32(self.primary_mask)?;
         writer.write_compound_tag(&self.heights)?;
         writer.write_byte_array(&self.data)?;
-        writer.write_var_u32(self.tiles.len() as u32)?;
+        writer.write_var_i32(self.tiles.len() as i32)?;
 
         for tile_compound_tag in self.tiles.iter() {
             writer.write_compound_tag(&tile_compound_tag)?;
@@ -344,11 +344,11 @@ impl PacketParser for ChunkData {
         let x = reader.read_i32::<BigEndian>()?;
         let z = reader.read_i32::<BigEndian>()?;
         let full = reader.read_bool()?;
-        let primary_mask = reader.read_var_u32()?;
+        let primary_mask = reader.read_var_i32()?;
         let heights = reader.read_compound_tag()?;
         let data = reader.read_byte_array()?;
 
-        let tiles_length = reader.read_var_u32()?;
+        let tiles_length = reader.read_var_i32()?;
         let mut tiles = Vec::new();
 
         for _ in 0..tiles_length {
@@ -372,10 +372,11 @@ impl PacketParser for ChunkData {
 mod tests {
     use crate::chat::{Message, Payload};
     use crate::game::{
-        ClientBoundChatMessage, ClientBoundKeepAlive, GameMode, JoinGame, MessagePosition,
-        ServerBoundChatMessage, ServerBoundKeepAlive,
+        ChunkData, ClientBoundChatMessage, ClientBoundKeepAlive, GameMode, JoinGame,
+        MessagePosition, ServerBoundChatMessage, ServerBoundKeepAlive,
     };
     use crate::PacketParser;
+    use nbt::CompoundTag;
     use std::io::Cursor;
 
     #[test]
@@ -511,5 +512,40 @@ mod tests {
         assert_eq!(join_game.level_type, String::from("default"));
         assert_eq!(join_game.view_distance, 10);
         assert!(join_game.reduced_debug_info);
+    }
+
+    #[test]
+    fn test_chunk_data_encode() {
+        let chunk_data = ChunkData {
+            x: -2,
+            z: 5,
+            full: true,
+            primary_mask: 65535,
+            heights: CompoundTag::named("HeightMaps"),
+            data: vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
+            tiles: vec![CompoundTag::named("TileEntity")],
+        };
+
+        let mut vec = Vec::new();
+        chunk_data.encode(&mut vec).unwrap();
+
+        assert_eq!(
+            vec,
+            include_bytes!("../test/packet/game/chunk_data.dat").to_vec()
+        );
+    }
+
+    #[test]
+    fn test_chunk_data_decode() {
+        let mut cursor = Cursor::new(include_bytes!("../test/packet/game/chunk_data.dat").to_vec());
+        let chunk_data = ChunkData::decode(&mut cursor).unwrap();
+
+        assert_eq!(chunk_data.x, -2);
+        assert_eq!(chunk_data.z, 5);
+        assert!(chunk_data.full);
+        assert_eq!(chunk_data.heights.name, Some(String::from("HeightMaps")));
+        assert_eq!(chunk_data.data, vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
+        assert_eq!(chunk_data.primary_mask, 65535);
+        assert_eq!(chunk_data.tiles[0].name, Some(String::from("TileEntity")));
     }
 }
