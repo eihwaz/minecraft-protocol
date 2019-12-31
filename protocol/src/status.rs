@@ -167,7 +167,7 @@ mod tests {
         OnlinePlayer, OnlinePlayers, PingRequest, PingResponse, ServerStatus, ServerVersion,
         StatusResponse,
     };
-    use crate::{PacketParser, PROTOCOL_VERSION};
+    use crate::PacketParser;
     use std::io::Cursor;
     use uuid::Uuid;
 
@@ -223,7 +223,7 @@ mod tests {
     fn test_status_response_encode() {
         let version = ServerVersion {
             name: String::from("1.15.1"),
-            protocol: PROTOCOL_VERSION,
+            protocol: 575,
         };
 
         let player = OnlinePlayer {

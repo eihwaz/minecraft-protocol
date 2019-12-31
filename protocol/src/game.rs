@@ -204,7 +204,7 @@ impl PacketParser for JoinGame {
         writer.write_i32::<BigEndian>(self.dimension)?;
         writer.write_u8(self.max_players)?;
         writer.write_string(&self.level_type, LEVEL_TYPE_MAX_LENGTH)?;
-        writer.write_var_u32(self.view_distance as u32)?;
+        writer.write_var_i32(self.view_distance as i32)?;
         writer.write_bool(self.reduced_debug_info)?;
 
         Ok(())
@@ -216,7 +216,7 @@ impl PacketParser for JoinGame {
         let dimension = reader.read_i32::<BigEndian>()?;
         let max_players = reader.read_u8()?;
         let level_type = reader.read_string(LEVEL_TYPE_MAX_LENGTH)?;
-        let view_distance = reader.read_var_u32()? as u8;
+        let view_distance = reader.read_var_i32()? as u8;
         let reduced_debug_info = reader.read_bool()?;
 
         Ok(JoinGame {
@@ -365,5 +365,151 @@ impl PacketParser for ChunkData {
             data,
             tiles,
         })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::chat::{Message, Payload};
+    use crate::game::{
+        ClientBoundChatMessage, ClientBoundKeepAlive, GameMode, JoinGame, MessagePosition,
+        ServerBoundChatMessage, ServerBoundKeepAlive,
+    };
+    use crate::PacketParser;
+    use std::io::Cursor;
+
+    #[test]
+    fn test_server_bound_chat_message_encode() {
+        let chat_message = ServerBoundChatMessage {
+            message: String::from("hello server!"),
+        };
+
+        let mut vec = Vec::new();
+        chat_message.encode(&mut vec).unwrap();
+
+        assert_eq!(
+            vec,
+            include_bytes!("../test/packet/game/server_bound_chat_message.dat").to_vec()
+        );
+    }
+
+    #[test]
+    fn test_server_bound_chat_message_decode() {
+        let mut cursor = Cursor::new(
+            include_bytes!("../test/packet/game/server_bound_chat_message.dat").to_vec(),
+        );
+        let chat_message = ServerBoundChatMessage::decode(&mut cursor).unwrap();
+
+        assert_eq!(chat_message.message, "hello server!");
+    }
+
+    #[test]
+    fn test_client_bound_chat_message_encode() {
+        let chat_message = ClientBoundChatMessage {
+            message: Message::new(Payload::text("hello client!")),
+            position: MessagePosition::System,
+        };
+
+        let mut vec = Vec::new();
+        chat_message.encode(&mut vec).unwrap();
+
+        assert_eq!(
+            vec,
+            include_bytes!("../test/packet/game/client_bound_chat_message.dat").to_vec()
+        );
+    }
+
+    #[test]
+    fn test_client_bound_chat_message_decode() {
+        let mut cursor = Cursor::new(
+            include_bytes!("../test/packet/game/client_bound_chat_message.dat").to_vec(),
+        );
+        let chat_message = ClientBoundChatMessage::decode(&mut cursor).unwrap();
+
+        assert_eq!(
+            chat_message.message,
+            Message::new(Payload::text("hello client!"))
+        );
+
+        assert_eq!(chat_message.position, MessagePosition::System);
+    }
+
+    #[test]
+    fn test_server_bound_keep_alive_encode() {
+        let keep_alive = ServerBoundKeepAlive { id: 31122019 };
+
+        let mut vec = Vec::new();
+        keep_alive.encode(&mut vec).unwrap();
+
+        assert_eq!(
+            vec,
+            include_bytes!("../test/packet/game/server_bound_keep_alive.dat").to_vec()
+        );
+    }
+
+    #[test]
+    fn test_server_bound_keep_alive_decode() {
+        let mut cursor =
+            Cursor::new(include_bytes!("../test/packet/game/server_bound_keep_alive.dat").to_vec());
+        let keep_alive = ServerBoundKeepAlive::decode(&mut cursor).unwrap();
+
+        assert_eq!(keep_alive.id, 31122019);
+    }
+
+    #[test]
+    fn test_client_bound_keep_alive_encode() {
+        let keep_alive = ClientBoundKeepAlive { id: 240714 };
+
+        let mut vec = Vec::new();
+        keep_alive.encode(&mut vec).unwrap();
+
+        assert_eq!(
+            vec,
+            include_bytes!("../test/packet/game/client_bound_keep_alive.dat").to_vec()
+        );
+    }
+
+    #[test]
+    fn test_client_bound_keep_alive_decode() {
+        let mut cursor =
+            Cursor::new(include_bytes!("../test/packet/game/client_bound_keep_alive.dat").to_vec());
+        let keep_alive = ClientBoundKeepAlive::decode(&mut cursor).unwrap();
+
+        assert_eq!(keep_alive.id, 240714);
+    }
+
+    #[test]
+    fn test_join_game_encode() {
+        let join_game = JoinGame {
+            entity_id: 27,
+            game_mode: GameMode::Spectator,
+            dimension: 23,
+            max_players: 100,
+            level_type: String::from("default"),
+            view_distance: 10,
+            reduced_debug_info: true,
+        };
+
+        let mut vec = Vec::new();
+        join_game.encode(&mut vec).unwrap();
+
+        assert_eq!(
+            vec,
+            include_bytes!("../test/packet/game/join_game.dat").to_vec()
+        );
+    }
+
+    #[test]
+    fn test_join_game_decode() {
+        let mut cursor = Cursor::new(include_bytes!("../test/packet/game/join_game.dat").to_vec());
+        let join_game = JoinGame::decode(&mut cursor).unwrap();
+
+        assert_eq!(join_game.entity_id, 27);
+        assert_eq!(join_game.game_mode, GameMode::Spectator);
+        assert_eq!(join_game.dimension, 23);
+        assert_eq!(join_game.max_players, 100);
+        assert_eq!(join_game.level_type, String::from("default"));
+        assert_eq!(join_game.view_distance, 10);
+        assert!(join_game.reduced_debug_info);
     }
 }

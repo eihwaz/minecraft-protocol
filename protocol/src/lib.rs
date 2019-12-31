@@ -23,7 +23,7 @@ pub mod login;
 pub mod status;
 
 /// Current supported protocol version.
-pub const PROTOCOL_VERSION: u32 = 575;
+pub const PROTOCOL_VERSION: u32 = 498;
 /// String maximum length.
 const STRING_MAX_LENGTH: u32 = 32_768;
 
