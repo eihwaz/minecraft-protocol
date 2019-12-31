@@ -510,7 +510,7 @@ mod tests {
 
         assert_eq!(
             login_disconnect.reason,
-            Message::new(Payload::text("Description"))
+            Message::new(Payload::text("Message"))
         );
     }
 
