@@ -1,10 +1,11 @@
-use std::io::{Read, Write};
-
-use mc_varint::{VarIntRead, VarIntWrite};
+use crate::chat::Message;
+use crate::DecodeError;
+use crate::Decoder;
+use crate::Encoder;
+use std::io::Read;
 use uuid::Uuid;
 
-use crate::chat::Message;
-use crate::{DecodeError, EncodeError, PacketParser, PacketRead, PacketWrite, STRING_MAX_LENGTH};
+use minecraft_protocol_derive::Packet;
 
 const LOGIN_MAX_LENGTH: u32 = 16;
 const SERVER_ID_MAX_LENGTH: u32 = 20;
@@ -106,6 +107,7 @@ impl LoginClientBoundPacket {
     }
 }
 
+#[derive(Packet, Debug)]
 pub struct LoginStart {
     pub name: String,
 }
@@ -118,20 +120,7 @@ impl LoginStart {
     }
 }
 
-impl PacketParser for LoginStart {
-    type Output = Self;
-
-    fn encode<W: Write>(&self, writer: &mut W) -> Result<(), EncodeError> {
-        writer.write_string(&self.name, LOGIN_MAX_LENGTH)
-    }
-
-    fn decode<R: Read>(reader: &mut R) -> Result<Self::Output, DecodeError> {
-        let name = reader.read_string(LOGIN_MAX_LENGTH)?;
-
-        Ok(LoginStart { name })
-    }
-}
-
+#[derive(Packet, Debug)]
 pub struct EncryptionResponse {
     pub shared_secret: Vec<u8>,
     pub verify_token: Vec<u8>,
@@ -148,27 +137,7 @@ impl EncryptionResponse {
     }
 }
 
-impl PacketParser for EncryptionResponse {
-    type Output = Self;
-
-    fn encode<W: Write>(&self, writer: &mut W) -> Result<(), EncodeError> {
-        writer.write_byte_array(&self.shared_secret)?;
-        writer.write_byte_array(&self.verify_token)?;
-
-        Ok(())
-    }
-
-    fn decode<R: Read>(reader: &mut R) -> Result<Self::Output, DecodeError> {
-        let shared_secret = reader.read_byte_array()?;
-        let verify_token = reader.read_byte_array()?;
-
-        Ok(EncryptionResponse {
-            shared_secret,
-            verify_token,
-        })
-    }
-}
-
+#[derive(Packet, Debug)]
 pub struct LoginPluginResponse {
     pub message_id: i32,
     pub successful: bool,
@@ -187,32 +156,7 @@ impl LoginPluginResponse {
     }
 }
 
-impl PacketParser for LoginPluginResponse {
-    type Output = Self;
-
-    fn encode<W: Write>(&self, writer: &mut W) -> Result<(), EncodeError> {
-        writer.write_var_i32(self.message_id)?;
-        writer.write_bool(self.successful)?;
-        writer.write_all(&self.data)?;
-
-        Ok(())
-    }
-
-    fn decode<R: Read>(reader: &mut R) -> Result<Self::Output, DecodeError> {
-        let message_id = reader.read_var_i32()?;
-        let successful = reader.read_bool()?;
-
-        let mut data = Vec::new();
-        reader.read_to_end(data.as_mut())?;
-
-        Ok(LoginPluginResponse {
-            message_id,
-            successful,
-            data,
-        })
-    }
-}
-
+#[derive(Packet, Debug)]
 pub struct LoginDisconnect {
     pub reason: Message,
 }
@@ -225,22 +169,7 @@ impl LoginDisconnect {
     }
 }
 
-impl PacketParser for LoginDisconnect {
-    type Output = Self;
-
-    fn encode<W: Write>(&self, writer: &mut W) -> Result<(), EncodeError> {
-        writer.write_chat_message(&self.reason)?;
-
-        Ok(())
-    }
-
-    fn decode<R: Read>(reader: &mut R) -> Result<Self::Output, DecodeError> {
-        let reason = reader.read_chat_message()?;
-
-        Ok(LoginDisconnect { reason })
-    }
-}
-
+#[derive(Packet, Debug)]
 pub struct EncryptionRequest {
     pub server_id: String,
     pub public_key: Vec<u8>,
@@ -263,30 +192,7 @@ impl EncryptionRequest {
     }
 }
 
-impl PacketParser for EncryptionRequest {
-    type Output = Self;
-
-    fn encode<W: Write>(&self, writer: &mut W) -> Result<(), EncodeError> {
-        writer.write_string(&self.server_id, SERVER_ID_MAX_LENGTH)?;
-        writer.write_byte_array(&self.public_key)?;
-        writer.write_byte_array(&self.verify_token)?;
-
-        Ok(())
-    }
-
-    fn decode<R: Read>(reader: &mut R) -> Result<Self::Output, DecodeError> {
-        let server_id = reader.read_string(SERVER_ID_MAX_LENGTH)?;
-        let public_key = reader.read_byte_array()?;
-        let verify_token = reader.read_byte_array()?;
-
-        Ok(EncryptionRequest {
-            server_id,
-            public_key,
-            verify_token,
-        })
-    }
-}
-
+#[derive(Packet, Debug)]
 pub struct LoginSuccess {
     pub uuid: Uuid,
     pub username: String,
@@ -300,28 +206,7 @@ impl LoginSuccess {
     }
 }
 
-impl PacketParser for LoginSuccess {
-    type Output = Self;
-
-    fn encode<W: Write>(&self, writer: &mut W) -> Result<(), EncodeError> {
-        let uuid_hyphenated_string = self.uuid.to_hyphenated().to_string();
-
-        writer.write_string(&uuid_hyphenated_string, HYPHENATED_UUID_LENGTH)?;
-        writer.write_string(&self.username, LOGIN_MAX_LENGTH)?;
-
-        Ok(())
-    }
-
-    fn decode<R: Read>(reader: &mut R) -> Result<Self::Output, DecodeError> {
-        let uuid_hyphenated_string = reader.read_string(HYPHENATED_UUID_LENGTH)?;
-
-        let uuid = Uuid::parse_str(&uuid_hyphenated_string)?;
-        let username = reader.read_string(LOGIN_MAX_LENGTH)?;
-
-        Ok(LoginSuccess { uuid, username })
-    }
-}
-
+#[derive(Packet, Debug)]
 pub struct SetCompression {
     pub threshold: i32,
 }
@@ -334,22 +219,7 @@ impl SetCompression {
     }
 }
 
-impl PacketParser for SetCompression {
-    type Output = Self;
-
-    fn encode<W: Write>(&self, writer: &mut W) -> Result<(), EncodeError> {
-        writer.write_var_i32(self.threshold)?;
-
-        Ok(())
-    }
-
-    fn decode<R: Read>(reader: &mut R) -> Result<Self::Output, DecodeError> {
-        let threshold = reader.read_var_i32()?;
-
-        Ok(SetCompression { threshold })
-    }
-}
-
+#[derive(Packet, Debug)]
 pub struct LoginPluginRequest {
     pub message_id: i32,
     pub channel: String,
@@ -368,38 +238,14 @@ impl LoginPluginRequest {
     }
 }
 
-impl PacketParser for LoginPluginRequest {
-    type Output = Self;
-
-    fn encode<W: Write>(&self, writer: &mut W) -> Result<(), EncodeError> {
-        writer.write_var_i32(self.message_id)?;
-        writer.write_string(&self.channel, STRING_MAX_LENGTH)?;
-        writer.write_all(&self.data)?;
-
-        Ok(())
-    }
-
-    fn decode<R: Read>(reader: &mut R) -> Result<Self::Output, DecodeError> {
-        let message_id = reader.read_var_i32()?;
-        let channel = reader.read_string(STRING_MAX_LENGTH)?;
-        let mut data = Vec::new();
-        reader.read_to_end(data.as_mut())?;
-
-        Ok(LoginPluginRequest {
-            message_id,
-            channel,
-            data,
-        })
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use crate::chat::{Message, Payload};
     use crate::login::{EncryptionRequest, LoginDisconnect, LoginPluginRequest, SetCompression};
     use crate::login::{EncryptionResponse, LoginPluginResponse};
     use crate::login::{LoginStart, LoginSuccess};
-    use crate::PacketParser;
+    use crate::Decoder;
+    use crate::Encoder;
     use std::io::Cursor;
     use uuid::Uuid;
 

@@ -1,11 +1,11 @@
-use std::io::{Read, Write};
-
-use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 use crate::chat::Message;
-use crate::{DecodeError, EncodeError, PacketParser, PacketRead, PacketWrite, STRING_MAX_LENGTH};
+use crate::DecodeError;
+use crate::Decoder;
+use minecraft_protocol_derive::Packet;
+use std::io::Read;
 
 pub enum StatusServerBoundPacket {
     StatusRequest,
@@ -47,6 +47,7 @@ impl StatusClientBoundPacket {
     }
 }
 
+#[derive(Packet, Debug)]
 pub struct PingRequest {
     pub time: u64,
 }
@@ -59,22 +60,7 @@ impl PingRequest {
     }
 }
 
-impl PacketParser for PingRequest {
-    type Output = Self;
-
-    fn encode<W: Write>(&self, writer: &mut W) -> Result<(), EncodeError> {
-        writer.write_u64::<BigEndian>(self.time)?;
-
-        Ok(())
-    }
-
-    fn decode<R: Read>(reader: &mut R) -> Result<Self::Output, DecodeError> {
-        let time = reader.read_u64::<BigEndian>()?;
-
-        Ok(PingRequest { time })
-    }
-}
-
+#[derive(Packet, Debug)]
 pub struct PingResponse {
     pub time: u64,
 }
@@ -87,36 +73,20 @@ impl PingResponse {
     }
 }
 
-impl PacketParser for PingResponse {
-    type Output = Self;
-
-    fn encode<W: Write>(&self, writer: &mut W) -> Result<(), EncodeError> {
-        writer.write_u64::<BigEndian>(self.time)?;
-
-        Ok(())
-    }
-
-    fn decode<R: Read>(reader: &mut R) -> Result<Self::Output, DecodeError> {
-        let time = reader.read_u64::<BigEndian>()?;
-
-        Ok(PingResponse { time })
-    }
-}
-
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct ServerStatus {
     pub version: ServerVersion,
     pub players: OnlinePlayers,
     pub description: Message,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct ServerVersion {
     pub name: String,
     pub protocol: u32,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct OnlinePlayers {
     pub max: u32,
     pub online: u32,
@@ -129,6 +99,7 @@ pub struct OnlinePlayer {
     pub id: Uuid,
 }
 
+#[derive(Packet, Debug)]
 pub struct StatusResponse {
     pub server_status: ServerStatus,
 }
@@ -141,25 +112,6 @@ impl StatusResponse {
     }
 }
 
-impl PacketParser for StatusResponse {
-    type Output = Self;
-
-    fn encode<W: Write>(&self, writer: &mut W) -> Result<(), EncodeError> {
-        let json = serde_json::to_string(&self.server_status)?;
-        writer.write_string(&json, STRING_MAX_LENGTH)?;
-
-        Ok(())
-    }
-
-    fn decode<R: Read>(reader: &mut R) -> Result<Self::Output, DecodeError> {
-        let json = reader.read_string(STRING_MAX_LENGTH)?;
-        let server_status = serde_json::from_str(&json)?;
-        let status_response = StatusResponse { server_status };
-
-        Ok(status_response)
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use crate::chat::{Message, Payload};
@@ -167,7 +119,8 @@ mod tests {
         OnlinePlayer, OnlinePlayers, PingRequest, PingResponse, ServerStatus, ServerVersion,
         StatusResponse,
     };
-    use crate::PacketParser;
+    use crate::Decoder;
+    use crate::Encoder;
     use std::io::Cursor;
     use uuid::Uuid;
 

@@ -10,5 +10,7 @@ publish = false
 proc-macro = true
 
 [dependencies]
-syn = "1.0"
-quote = "1.0"
+# Versions match serde crate to reduce compile time.
+proc-macro2 = "0.4.30"
+syn = "0.15.44"
+quote = "0.6.13"

@@ -6,8 +6,8 @@ use std::io;
 use std::io::{Read, Write};
 use std::string::FromUtf8Error;
 
-use byteorder::ReadBytesExt;
 use byteorder::WriteBytesExt;
+use byteorder::{BigEndian, ReadBytesExt};
 use mc_varint::{VarIntRead, VarIntWrite};
 use serde_json::error::Error as JsonError;
 use uuid::parser::ParseError as UuidParseError;
@@ -16,6 +16,8 @@ use crate::chat::Message;
 use nbt::decode::TagDecodeError;
 use nbt::CompoundTag;
 use num_traits::{FromPrimitive, ToPrimitive};
+use serde::{Deserialize, Serialize};
+use uuid::Uuid;
 
 pub mod chat;
 pub mod game;
@@ -125,10 +127,12 @@ impl From<TagDecodeError> for DecodeError {
     }
 }
 
-trait PacketParser {
-    type Output;
-
+trait Encoder {
     fn encode<W: Write>(&self, writer: &mut W) -> Result<(), EncodeError>;
+}
+
+trait Decoder {
+    type Output;
 
     fn decode<R: Read>(reader: &mut R) -> Result<Self::Output, DecodeError>;
 }
@@ -259,5 +263,210 @@ impl<W: Write> PacketWrite for W {
         nbt::encode::write_compound_tag(self, value.clone())?;
 
         Ok(())
+    }
+}
+
+// TODO: Replace primitive impls with macros.
+
+impl Encoder for u8 {
+    fn encode<W: Write>(&self, writer: &mut W) -> Result<(), EncodeError> {
+        Ok(writer.write_u8(*self)?)
+    }
+}
+
+impl Decoder for u8 {
+    type Output = Self;
+
+    fn decode<R: Read>(reader: &mut R) -> Result<Self::Output, DecodeError> {
+        Ok(reader.read_u8()?)
+    }
+}
+
+impl Encoder for i32 {
+    fn encode<W: Write>(&self, writer: &mut W) -> Result<(), EncodeError> {
+        Ok(writer.write_i32::<BigEndian>(*self)?)
+    }
+}
+
+impl Decoder for i32 {
+    type Output = Self;
+
+    fn decode<R: Read>(reader: &mut R) -> Result<Self::Output, DecodeError> {
+        Ok(reader.read_i32::<BigEndian>()?)
+    }
+}
+
+impl Encoder for u32 {
+    fn encode<W: Write>(&self, writer: &mut W) -> Result<(), EncodeError> {
+        Ok(writer.write_u32::<BigEndian>(*self)?)
+    }
+}
+
+impl Decoder for u32 {
+    type Output = Self;
+
+    fn decode<R: Read>(reader: &mut R) -> Result<Self::Output, DecodeError> {
+        Ok(reader.read_u32::<BigEndian>()?)
+    }
+}
+
+impl Encoder for i64 {
+    fn encode<W: Write>(&self, writer: &mut W) -> Result<(), EncodeError> {
+        Ok(writer.write_i64::<BigEndian>(*self)?)
+    }
+}
+
+impl Decoder for i64 {
+    type Output = Self;
+
+    fn decode<R: Read>(reader: &mut R) -> Result<Self::Output, DecodeError> {
+        Ok(reader.read_i64::<BigEndian>()?)
+    }
+}
+
+impl Encoder for u64 {
+    fn encode<W: Write>(&self, writer: &mut W) -> Result<(), EncodeError> {
+        Ok(writer.write_u64::<BigEndian>(*self)?)
+    }
+}
+
+impl Decoder for u64 {
+    type Output = Self;
+
+    fn decode<R: Read>(reader: &mut R) -> Result<Self::Output, DecodeError> {
+        Ok(reader.read_u64::<BigEndian>()?)
+    }
+}
+
+impl Encoder for String {
+    fn encode<W: Write>(&self, writer: &mut W) -> Result<(), EncodeError> {
+        Ok(writer.write_string(self, STRING_MAX_LENGTH)?)
+    }
+}
+
+impl Decoder for String {
+    type Output = Self;
+
+    fn decode<R: Read>(reader: &mut R) -> Result<Self::Output, DecodeError> {
+        Ok(reader.read_string(STRING_MAX_LENGTH)?)
+    }
+}
+
+impl Encoder for bool {
+    fn encode<W: Write>(&self, writer: &mut W) -> Result<(), EncodeError> {
+        Ok(writer.write_bool(*self)?)
+    }
+}
+
+impl Decoder for bool {
+    type Output = Self;
+
+    fn decode<R: Read>(reader: &mut R) -> Result<Self::Output, DecodeError> {
+        Ok(reader.read_bool()?)
+    }
+}
+
+impl<T: ToPrimitive> Encoder for T {
+    fn encode<W: Write>(&self, writer: &mut W) -> Result<(), EncodeError> {
+        Ok(writer.write_enum(self)?)
+    }
+}
+
+impl<T: ToPrimitive> Decoder for T {
+    type Output = Self;
+
+    fn decode<R: Read>(reader: &mut R) -> Result<Self::Output, DecodeError> {
+        Ok(reader.read_enum())
+    }
+}
+
+impl Encoder for Vec<u8> {
+    fn encode<W: Write>(&self, writer: &mut W) -> Result<(), EncodeError> {
+        Ok(writer.write_byte_array(self)?)
+    }
+}
+
+impl Decoder for Vec<u8> {
+    type Output = Self;
+
+    fn decode<R: Read>(reader: &mut R) -> Result<Self::Output, DecodeError> {
+        Ok(reader.read_byte_array()?)
+    }
+}
+
+impl Encoder for Uuid {
+    fn encode<W: Write>(&self, writer: &mut W) -> Result<(), EncodeError> {
+        Ok(writer.write_all(self.as_bytes())?)
+    }
+}
+
+impl Decoder for Uuid {
+    type Output = Self;
+
+    fn decode<R: Read>(reader: &mut R) -> Result<Self::Output, DecodeError> {
+        let buf = [0; 16];
+        reader.read_exact(&buf)?;
+
+        Ok(Uuid::from_bytes(buf))
+    }
+}
+
+impl Encoder for CompoundTag {
+    fn encode<W: Write>(&self, writer: &mut W) -> Result<(), EncodeError> {
+        Ok(writer.write_compound_tag(self)?)
+    }
+}
+
+impl Decoder for CompoundTag {
+    type Output = Self;
+
+    fn decode<R: Read>(reader: &mut R) -> Result<Self::Output, DecodeError> {
+        Ok(reader.read_compound_tag()?)
+    }
+}
+
+impl Encoder for Vec<CompoundTag> {
+    fn encode<W: Write>(&self, writer: &mut W) -> Result<(), EncodeError> {
+        writer.write_var_i32(self.len() as i32)?;
+
+        for compound_tag in self {
+            writer.write_compound_tag(&compound_tag)?;
+        }
+
+        Ok(())
+    }
+}
+
+impl Decoder for Vec<CompoundTag> {
+    type Output = Self;
+
+    fn decode<R: Read>(reader: &mut R) -> Result<Self::Output, DecodeError> {
+        let length = reader.read_var_i32()? as usize;
+        let mut vec = Vec::with_capacity(length);
+
+        for _ in 0..length {
+            let compound_tag = reader.read_compound_tag()?;
+            vec.push(compound_tag);
+        }
+
+        Ok(vec)
+    }
+}
+
+impl<T: Serialize> Encoder for T {
+    fn encode<W: Write>(&self, writer: &mut W) -> Result<(), EncodeError> {
+        let json = serde_json::to_string(self)?;
+        writer.write_string(&json, STRING_MAX_LENGTH)?;
+
+        Ok(())
+    }
+}
+
+impl<'de, T: Deserialize<'de>> Decoder for T {
+    type Output = Self;
+
+    fn decode<R: Read>(reader: &mut R) -> Result<Self::Output, DecodeError> {
+        let json = reader.read_string(STRING_MAX_LENGTH)?;
+        serde_json::from_str(&json)?
     }
 }
