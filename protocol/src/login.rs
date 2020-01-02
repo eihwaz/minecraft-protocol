@@ -1,7 +1,6 @@
 use crate::chat::Message;
 use crate::DecodeError;
 use crate::Decoder;
-use crate::Encoder;
 use std::io::Read;
 use uuid::Uuid;
 

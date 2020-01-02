@@ -1,9 +1,9 @@
 use num_derive::{FromPrimitive, ToPrimitive};
 
 use crate::chat::Message;
+use crate::impl_enum_encoder_decoder;
 use crate::DecodeError;
 use crate::Decoder;
-use crate::Encoder;
 use minecraft_protocol_derive::Packet;
 use nbt::CompoundTag;
 use std::io::Read;
@@ -111,6 +111,8 @@ pub enum MessagePosition {
     HotBar,
 }
 
+impl_enum_encoder_decoder!(MessagePosition);
+
 impl ClientBoundChatMessage {
     pub fn new(message: Message, position: MessagePosition) -> GameClientBoundPacket {
         let chat_message = ClientBoundChatMessage { message, position };
@@ -138,6 +140,8 @@ pub enum GameMode {
     Spectator = 3,
     Hardcore = 8,
 }
+
+impl_enum_encoder_decoder!(GameMode);
 
 impl JoinGame {
     pub fn new(

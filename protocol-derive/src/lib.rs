@@ -33,7 +33,7 @@ fn impl_encoder_trait(name: &Ident, fields: &Fields) -> TokenStream2 {
         let name = &field.ident;
 
         quote! {
-           Encoder::encode(&self.#name, writer);
+           crate::Encoder::encode(&self.#name, writer);
         }
     });
 
@@ -49,7 +49,7 @@ fn impl_encoder_trait(name: &Ident, fields: &Fields) -> TokenStream2 {
 }
 
 fn impl_decoder_trait(name: &Ident, fields: &Fields) -> TokenStream2 {
-    let decode = quote_field(fields, |field| {
+    let decode = quote_field(fields, |_field| {
         quote! {
            todo!();
         }

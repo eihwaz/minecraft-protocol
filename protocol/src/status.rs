@@ -2,6 +2,7 @@ use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 use crate::chat::Message;
+use crate::impl_json_encoder_decoder;
 use crate::DecodeError;
 use crate::Decoder;
 use minecraft_protocol_derive::Packet;
@@ -103,6 +104,8 @@ pub struct OnlinePlayer {
 pub struct StatusResponse {
     pub server_status: ServerStatus,
 }
+
+impl_json_encoder_decoder!(ServerStatus);
 
 impl StatusResponse {
     pub fn new(server_status: ServerStatus) -> StatusClientBoundPacket {
