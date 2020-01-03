@@ -25,7 +25,7 @@ pub fn derive_packet(input: proc_macro::TokenStream) -> TokenStream1 {
                 #decoder
             })
         }
-        _ => panic!("Packet derive are available only for structures"),
+        _ => panic!("Expected only structures"),
     }
 }
 
@@ -82,27 +82,27 @@ fn parse_field_meta(meta_list: &Vec<NestedMeta>) -> PacketFieldMeta {
 
     for meta in meta_list {
         match meta {
-            NestedMeta::Meta(Meta::NameValue(m)) => match &m.path {
-                p if p.is_ident("with") => {
-                    if let Lit::Str(lit_str) = &m.lit {
-                        module = Some(lit_str.value());
-                    }
-                }
-                p if p.is_ident("max_length") => {
-                    if let Lit::Int(lit_int) = &m.lit {
+            NestedMeta::Meta(Meta::NameValue(named_meta)) => match &named_meta.path {
+                path if path.is_ident("with") => match &named_meta.lit {
+                    Lit::Str(lit_str) => module = Some(lit_str.value()),
+                    _ => panic!("\"with\" attribute value must be string"),
+                },
+                path if path.is_ident("max_length") => match &named_meta.lit {
+                    Lit::Int(lit_int) => {
                         max_length = Some(
                             lit_int
                                 .base10_parse::<u16>()
                                 .expect("Failed to parse max length attribute"),
-                        );
+                        )
                     }
-                }
-                p => panic!(
-                    "Packet derive received unrecognized attribute : \"{}\"",
-                    p.get_ident().unwrap()
+                    _ => panic!("\"max_length\" attribute value must be integer"),
+                },
+                path => panic!(
+                    "Received unrecognized attribute : \"{}\"",
+                    path.get_ident().unwrap()
                 ),
             },
-            _ => panic!("Packet derive support only named meta values"),
+            _ => panic!("Expected only named meta values"),
         }
     }
 
@@ -117,7 +117,7 @@ fn get_packet_field_meta(field: &Field) -> Vec<NestedMeta> {
         .map(|a| a.parse_meta().expect("Failed to parse field attribute"))
         .map(|m| match m {
             Meta::List(meta_list) => Vec::from_iter(meta_list.nested),
-            _ => panic!("Packet derive support only list attributes"),
+            _ => panic!("Expected only list attributes"),
         })
         .flatten()
         .collect()
@@ -130,7 +130,7 @@ fn quote_field<F: Fn(&Field) -> TokenStream2>(fields: &Fields, func: F) -> Token
         Fields::Named(named_fields) => {
             output.append_all(named_fields.named.iter().map(|f| func(f)))
         }
-        _ => panic!("Packet derive are available only for named fields"),
+        _ => panic!("Expected only for named fields"),
     }
 
     output
