@@ -24,8 +24,9 @@ pub mod status;
 
 /// Current supported protocol version.
 pub const PROTOCOL_VERSION: u32 = 498;
-/// String maximum length.
+/// Protocol limits maximum string length.
 const STRING_MAX_LENGTH: u32 = 32_768;
+const HYPHENATED_UUID_LENGTH: u32 = 36;
 
 /// Possible errors while encoding packet.
 #[derive(Debug)]
@@ -477,3 +478,76 @@ macro_rules! impl_json_encoder_decoder (
         }
    );
 );
+
+mod var_int {
+    use crate::{DecodeError, EncodeError, Encoder};
+    use mc_varint::{VarIntRead, VarIntWrite};
+    use std::io::{Read, Write};
+
+    pub fn encode<W: Write>(value: &i32, writer: &mut W) -> Result<(), EncodeError> {
+        writer.write_var_i32(*value)?;
+
+        Ok(())
+    }
+
+    pub fn decode<R: Read>(reader: &mut R) -> Result<i32, DecodeError> {
+        Ok(reader.read_var_i32()?)
+    }
+}
+
+mod var_long {
+    use crate::{DecodeError, EncodeError, Encoder};
+    use mc_varint::{VarIntRead, VarIntWrite};
+    use std::io::{Read, Write};
+
+    pub fn encode<W: Write>(value: &i64, writer: &mut W) -> Result<(), EncodeError> {
+        writer.write_var_i64(*value)?;
+
+        Ok(())
+    }
+
+    pub fn decode<R: Read>(reader: &mut R) -> Result<i64, DecodeError> {
+        Ok(reader.read_var_i64()?)
+    }
+}
+
+mod rest {
+    use crate::{DecodeError, Decoder, EncodeError, Encoder};
+    use std::io::{Read, Write};
+
+    pub fn encode<W: Write>(value: &[u8], writer: &mut W) -> Result<(), EncodeError> {
+        writer.write_all(value)?;
+
+        Ok(())
+    }
+
+    pub fn decode<R: Read>(reader: &mut R) -> Result<Vec<u8>, DecodeError> {
+        let mut data = Vec::new();
+        reader.read_to_end(data.as_mut())?;
+
+        Ok(data)
+    }
+}
+
+mod uuid_hyp_str {
+    use crate::{
+        DecodeError, Decoder, DecoderReadExt, EncodeError, Encoder, EncoderWriteExt,
+        HYPHENATED_UUID_LENGTH,
+    };
+    use std::io::{Read, Write};
+    use uuid::Uuid;
+
+    pub fn encode<W: Write>(value: &Uuid, writer: &mut W) -> Result<(), EncodeError> {
+        let uuid_hyphenated_string = value.to_hyphenated().to_string();
+        writer.write_string(&uuid_hyphenated_string, HYPHENATED_UUID_LENGTH)?;
+
+        Ok(())
+    }
+
+    pub fn decode<R: Read>(reader: &mut R) -> Result<Uuid, DecodeError> {
+        let uuid_hyphenated_string = reader.read_string(HYPHENATED_UUID_LENGTH)?;
+        let uuid = Uuid::parse_str(&uuid_hyphenated_string)?;
+
+        Ok(uuid)
+    }
+}

@@ -8,9 +8,6 @@ use minecraft_protocol_derive::Packet;
 use nbt::CompoundTag;
 use std::io::Read;
 
-const SERVER_BOUND_CHAT_MESSAGE_MAX_LENGTH: u32 = 256;
-const LEVEL_TYPE_MAX_LENGTH: u32 = 16;
-
 pub enum GameServerBoundPacket {
     ServerBoundChatMessage(ServerBoundChatMessage),
     ServerBoundKeepAlive(ServerBoundKeepAlive),
@@ -87,6 +84,7 @@ impl GameClientBoundPacket {
 
 #[derive(Packet, Debug)]
 pub struct ServerBoundChatMessage {
+    #[packet(max_length = 256)]
     pub message: String,
 }
 
@@ -127,8 +125,10 @@ pub struct JoinGame {
     pub game_mode: GameMode,
     pub dimension: i32,
     pub max_players: u8,
+    #[packet(max_length = 16)]
     pub level_type: String,
-    pub view_distance: u8,
+    #[packet(with = "var_int")]
+    pub view_distance: i32,
     pub reduced_debug_info: bool,
 }
 
@@ -150,7 +150,7 @@ impl JoinGame {
         dimension: i32,
         max_players: u8,
         level_type: String,
-        view_distance: u8,
+        view_distance: i32,
         reduced_debug_info: bool,
     ) -> GameClientBoundPacket {
         let join_game = JoinGame {
@@ -198,6 +198,7 @@ pub struct ChunkData {
     pub x: i32,
     pub z: i32,
     pub full: bool,
+    #[packet(with = "var_int")]
     pub primary_mask: i32,
     pub heights: CompoundTag,
     pub data: Vec<u8>,

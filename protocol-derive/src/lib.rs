@@ -5,6 +5,7 @@ use proc_macro2::Ident;
 use proc_macro2::TokenStream as TokenStream2;
 use quote::{quote, TokenStreamExt};
 use std::iter::FromIterator;
+use syn::export::Span;
 use syn::{parse_macro_input, Data, DeriveInput, Field, Fields, Lit, Meta, NestedMeta};
 
 #[proc_macro_derive(Packet, attributes(packet))]
@@ -34,10 +35,21 @@ fn impl_encoder_trait(name: &Ident, fields: &Fields) -> TokenStream2 {
         let name = &field.ident;
 
         let unparsed_meta = get_packet_field_meta(field);
-        let parsed_meta = parse_field_meta(&unparsed_meta);
+        let parsed_meta = parse_packet_field_meta(&unparsed_meta);
 
-        quote! {
-           crate::Encoder::encode(&self.#name, writer)?;
+        match parsed_meta.module {
+            Some(module) => {
+                let module_ident = Ident::new(&module, Span::call_site());
+
+                quote! {
+                    crate::#module_ident::encode(&self.#name, writer)?;
+                }
+            }
+            None => {
+                quote! {
+                    crate::Encoder::encode(&self.#name, writer)?;
+                }
+            }
         }
     });
 
@@ -76,7 +88,7 @@ struct PacketFieldMeta {
     max_length: Option<u16>,
 }
 
-fn parse_field_meta(meta_list: &Vec<NestedMeta>) -> PacketFieldMeta {
+fn parse_packet_field_meta(meta_list: &Vec<NestedMeta>) -> PacketFieldMeta {
     let mut module = None;
     let mut max_length = None;
 

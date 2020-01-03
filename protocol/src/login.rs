@@ -6,10 +6,6 @@ use uuid::Uuid;
 
 use minecraft_protocol_derive::Packet;
 
-const LOGIN_MAX_LENGTH: u32 = 16;
-const SERVER_ID_MAX_LENGTH: u32 = 20;
-const HYPHENATED_UUID_LENGTH: u32 = 36;
-
 pub enum LoginServerBoundPacket {
     LoginStart(LoginStart),
     EncryptionResponse(EncryptionResponse),
@@ -138,8 +134,10 @@ impl EncryptionResponse {
 
 #[derive(Packet, Debug)]
 pub struct LoginPluginResponse {
+    #[packet(with = "var_int")]
     pub message_id: i32,
     pub successful: bool,
+    #[packet(with = "rest")]
     pub data: Vec<u8>,
 }
 
@@ -194,7 +192,9 @@ impl EncryptionRequest {
 
 #[derive(Packet, Debug)]
 pub struct LoginSuccess {
+    #[packet(with = "uuid_hyp_str")]
     pub uuid: Uuid,
+    #[packet(max_length = 16)]
     pub username: String,
 }
 
@@ -208,7 +208,7 @@ impl LoginSuccess {
 
 #[derive(Packet, Debug)]
 pub struct SetCompression {
-    #[packet(with = "varint")]
+    #[packet(with = "var_int")]
     pub threshold: i32,
 }
 
@@ -222,8 +222,10 @@ impl SetCompression {
 
 #[derive(Packet, Debug)]
 pub struct LoginPluginRequest {
+    #[packet(with = "var_int")]
     pub message_id: i32,
     pub channel: String,
+    #[packet(with = "rest")]
     pub data: Vec<u8>,
 }
 
