@@ -170,6 +170,7 @@ impl LoginDisconnect {
 
 #[derive(Packet, Debug)]
 pub struct EncryptionRequest {
+    #[packet(max_length = 20)]
     pub server_id: String,
     pub public_key: Vec<u8>,
     pub verify_token: Vec<u8>,
@@ -207,6 +208,7 @@ impl LoginSuccess {
 
 #[derive(Packet, Debug)]
 pub struct SetCompression {
+    #[packet(with = "varint")]
     pub threshold: i32,
 }
 

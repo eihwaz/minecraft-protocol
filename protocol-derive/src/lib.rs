@@ -4,9 +4,10 @@ use proc_macro::TokenStream as TokenStream1;
 use proc_macro2::Ident;
 use proc_macro2::TokenStream as TokenStream2;
 use quote::{quote, TokenStreamExt};
-use syn::{parse_macro_input, Data, DeriveInput, Field, Fields};
+use std::iter::FromIterator;
+use syn::{parse_macro_input, Data, DeriveInput, Field, Fields, Lit, Meta, NestedMeta};
 
-#[proc_macro_derive(Packet)]
+#[proc_macro_derive(Packet, attributes(packet))]
 pub fn derive_packet(input: proc_macro::TokenStream) -> TokenStream1 {
     let input = parse_macro_input!(input as DeriveInput);
     let name = &input.ident;
@@ -32,8 +33,11 @@ fn impl_encoder_trait(name: &Ident, fields: &Fields) -> TokenStream2 {
     let encode = quote_field(fields, |field| {
         let name = &field.ident;
 
+        let unparsed_meta = get_packet_field_meta(field);
+        let parsed_meta = parse_field_meta(&unparsed_meta);
+
         quote! {
-           crate::Encoder::encode(&self.#name, writer);
+           crate::Encoder::encode(&self.#name, writer)?;
         }
     });
 
@@ -64,6 +68,59 @@ fn impl_decoder_trait(name: &Ident, fields: &Fields) -> TokenStream2 {
             }
         }
     }
+}
+
+#[derive(Debug)]
+struct PacketFieldMeta {
+    module: Option<String>,
+    max_length: Option<u16>,
+}
+
+fn parse_field_meta(meta_list: &Vec<NestedMeta>) -> PacketFieldMeta {
+    let mut module = None;
+    let mut max_length = None;
+
+    for meta in meta_list {
+        match meta {
+            NestedMeta::Meta(Meta::NameValue(m)) => match &m.path {
+                p if p.is_ident("with") => {
+                    if let Lit::Str(lit_str) = &m.lit {
+                        module = Some(lit_str.value());
+                    }
+                }
+                p if p.is_ident("max_length") => {
+                    if let Lit::Int(lit_int) = &m.lit {
+                        max_length = Some(
+                            lit_int
+                                .base10_parse::<u16>()
+                                .expect("Failed to parse max length attribute"),
+                        );
+                    }
+                }
+                p => panic!(
+                    "Packet derive received unrecognized attribute : \"{}\"",
+                    p.get_ident().unwrap()
+                ),
+            },
+            _ => panic!("Packet derive support only named meta values"),
+        }
+    }
+
+    PacketFieldMeta { module, max_length }
+}
+
+fn get_packet_field_meta(field: &Field) -> Vec<NestedMeta> {
+    field
+        .attrs
+        .iter()
+        .filter(|a| a.path.is_ident("packet"))
+        .map(|a| a.parse_meta().expect("Failed to parse field attribute"))
+        .map(|m| match m {
+            Meta::List(meta_list) => Vec::from_iter(meta_list.nested),
+            _ => panic!("Packet derive support only list attributes"),
+        })
+        .flatten()
+        .collect()
 }
 
 fn quote_field<F: Fn(&Field) -> TokenStream2>(fields: &Fields, func: F) -> TokenStream2 {
