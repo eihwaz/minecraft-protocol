@@ -37,6 +37,13 @@ fn impl_encoder_trait(name: &Ident, fields: &Fields) -> TokenStream2 {
         let unparsed_meta = get_packet_field_meta(field);
         let parsed_meta = parse_packet_field_meta(&unparsed_meta);
 
+        // This is special case because max length are used only for strings.
+        if let Some(max_length) = parsed_meta.max_length {
+            return quote! {
+                crate::EncoderWriteExt::write_string(writer, &self.#name, #max_length)?;
+            };
+        }
+
         let module = parsed_meta.module.as_deref().unwrap_or("Encoder");
         let module_ident = Ident::new(&module, Span::call_site());
 
@@ -64,6 +71,13 @@ fn impl_decoder_trait(name: &Ident, fields: &Fields) -> TokenStream2 {
 
         let unparsed_meta = get_packet_field_meta(field);
         let parsed_meta = parse_packet_field_meta(&unparsed_meta);
+
+        // This is special case because max length are used only for strings.
+        if let Some(max_length) = parsed_meta.max_length {
+            return quote! {
+                let #name = crate::DecoderReadExt::read_string(reader, #max_length)?;
+            };
+        }
 
         match parsed_meta.module {
             Some(module) => {

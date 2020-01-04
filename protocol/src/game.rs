@@ -236,8 +236,8 @@ mod tests {
         ChunkData, ClientBoundChatMessage, ClientBoundKeepAlive, GameMode, JoinGame,
         MessagePosition, ServerBoundChatMessage, ServerBoundKeepAlive,
     };
-    use crate::Decoder;
-    use crate::Encoder;
+    use crate::{DecodeError, Encoder, EncoderWriteExt, STRING_MAX_LENGTH};
+    use crate::{Decoder, EncodeError};
     use nbt::CompoundTag;
     use std::io::Cursor;
 
@@ -264,6 +264,50 @@ mod tests {
         let chat_message = ServerBoundChatMessage::decode(&mut cursor).unwrap();
 
         assert_eq!(chat_message.message, "hello server!");
+    }
+
+    #[test]
+    fn test_server_bound_chat_message_encode_invalid_length() {
+        let chat_message = ServerBoundChatMessage {
+            message: "abc".repeat(100),
+        };
+
+        let mut vec = Vec::new();
+
+        let encode_error = chat_message
+            .encode(&mut vec)
+            .err()
+            .expect("Expected error `StringTooLong` because message has invalid length");
+
+        match encode_error {
+            EncodeError::StringTooLong { length, max_length } => {
+                assert_eq!(length, 300);
+                assert_eq!(max_length, 256);
+            }
+            _ => panic!("Expected `StringTooLong` but got `{:?}`", encode_error),
+        }
+    }
+
+    #[test]
+    fn test_server_bound_chat_message_decode_invalid_length() {
+        let message = "abc".repeat(100);
+
+        let mut vec = Vec::new();
+        vec.write_string(&message, STRING_MAX_LENGTH).unwrap();
+
+        let mut cursor = Cursor::new(vec);
+
+        let decode_error = ServerBoundChatMessage::decode(&mut cursor)
+            .err()
+            .expect("Expected error `StringTooLong` because message has invalid length");
+
+        match decode_error {
+            DecodeError::StringTooLong { length, max_length } => {
+                assert_eq!(length, 300);
+                assert_eq!(max_length, 256);
+            }
+            _ => panic!("Expected `StringTooLong` but got `{:?}`", decode_error),
+        }
     }
 
     #[test]

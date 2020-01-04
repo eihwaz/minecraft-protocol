@@ -25,8 +25,8 @@ pub mod status;
 /// Current supported protocol version.
 pub const PROTOCOL_VERSION: u32 = 498;
 /// Protocol limits maximum string length.
-const STRING_MAX_LENGTH: u32 = 32_768;
-const HYPHENATED_UUID_LENGTH: u32 = 36;
+const STRING_MAX_LENGTH: u16 = 32_768;
+const HYPHENATED_UUID_LENGTH: u16 = 36;
 
 /// Possible errors while encoding packet.
 #[derive(Debug)]
@@ -36,7 +36,7 @@ pub enum EncodeError {
         /// String length.
         length: usize,
         /// Max string length.
-        max_length: u32,
+        max_length: u16,
     },
     IOError {
         io_error: IoError,
@@ -68,9 +68,9 @@ pub enum DecodeError {
     /// String length can't be more than provided value.
     StringTooLong {
         /// String length.
-        length: u32,
+        length: usize,
         /// Max string length.
-        max_length: u32,
+        max_length: u16,
     },
     IOError {
         io_error: IoError,
@@ -140,7 +140,7 @@ trait Decoder {
 trait EncoderWriteExt {
     fn write_bool(&mut self, value: bool) -> Result<(), EncodeError>;
 
-    fn write_string(&mut self, value: &str, max_length: u32) -> Result<(), EncodeError>;
+    fn write_string(&mut self, value: &str, max_length: u16) -> Result<(), EncodeError>;
 
     fn write_byte_array(&mut self, value: &[u8]) -> Result<(), EncodeError>;
 
@@ -155,7 +155,7 @@ trait EncoderWriteExt {
 trait DecoderReadExt {
     fn read_bool(&mut self) -> Result<bool, DecodeError>;
 
-    fn read_string(&mut self, max_length: u32) -> Result<String, DecodeError>;
+    fn read_string(&mut self, max_length: u16) -> Result<String, DecodeError>;
 
     fn read_byte_array(&mut self) -> Result<Vec<u8>, DecodeError>;
 
@@ -177,7 +177,7 @@ impl<W: Write> EncoderWriteExt for W {
         Ok(())
     }
 
-    fn write_string(&mut self, value: &str, max_length: u32) -> Result<(), EncodeError> {
+    fn write_string(&mut self, value: &str, max_length: u16) -> Result<(), EncodeError> {
         let length = value.len();
 
         if length > max_length as usize {
@@ -224,10 +224,10 @@ impl<R: Read> DecoderReadExt for R {
         }
     }
 
-    fn read_string(&mut self, max_length: u32) -> Result<String, DecodeError> {
-        let length = self.read_var_i32()? as u32;
+    fn read_string(&mut self, max_length: u16) -> Result<String, DecodeError> {
+        let length = self.read_var_i32()? as usize;
 
-        if length > max_length as u32 {
+        if length as u16 > max_length {
             return Err(DecodeError::StringTooLong { length, max_length });
         }
 
