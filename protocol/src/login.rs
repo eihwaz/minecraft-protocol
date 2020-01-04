@@ -115,7 +115,7 @@ impl LoginStart {
     }
 }
 
-#[derive(Debug)]
+#[derive(Packet, Debug)]
 pub struct EncryptionResponse {
     pub shared_secret: Vec<u8>,
     pub verify_token: Vec<u8>,
@@ -129,28 +129,6 @@ impl EncryptionResponse {
         };
 
         LoginServerBoundPacket::EncryptionResponse(encryption_response)
-    }
-}
-
-impl crate::Encoder for EncryptionResponse {
-    fn encode<W: std::io::Write>(&self, writer: &mut W) -> Result<(), crate::EncodeError> {
-        crate::Encoder::encode(&self.shared_secret, writer)?;
-        crate::Encoder::encode(&self.verify_token, writer)?;
-        Ok(())
-    }
-}
-
-impl crate::Decoder for EncryptionResponse {
-    type Output = Self;
-
-    fn decode<R: std::io::Read>(reader: &mut R) -> Result<Self::Output, crate::DecodeError> {
-        let shared_secret = <Vec<u8> as crate::Decoder>::decode(reader)?;
-        let verify_token = <Vec<u8> as crate::Decoder>::decode(reader)?;
-
-        Ok(EncryptionResponse {
-            shared_secret,
-            verify_token,
-        })
     }
 }
 
