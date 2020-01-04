@@ -61,6 +61,7 @@
 //! assert_eq!(expected_message, Message::from_json(json).unwrap());
 //! ```
 
+use crate::impl_json_encoder_decoder;
 use serde::{Deserialize, Serialize};
 use serde_json::Error;
 
@@ -242,6 +243,8 @@ impl Message {
         serde_json::to_string(&self)
     }
 }
+
+impl_json_encoder_decoder!(Message);
 
 pub struct MessageBuilder {
     current: Message,

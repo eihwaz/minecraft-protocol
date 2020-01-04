@@ -1,0 +1,15 @@
+[package]
+name = "minecraft-protocol-derive"
+version = "0.0.0"
+authors = ["vagola <vladislavs.golubs@yandex.ru>"]
+edition = "2018"
+description = "Derive macro for reading and writing Minecraft packets"
+publish = false
+
+[lib]
+proc-macro = true
+
+[dependencies]
+proc-macro2 = "1.0"
+syn = "1.0"
+quote = "1.0"
