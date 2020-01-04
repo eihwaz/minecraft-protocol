@@ -480,7 +480,7 @@ macro_rules! impl_json_encoder_decoder (
 );
 
 mod var_int {
-    use crate::{DecodeError, EncodeError, Encoder};
+    use crate::{DecodeError, EncodeError};
     use mc_varint::{VarIntRead, VarIntWrite};
     use std::io::{Read, Write};
 
@@ -496,7 +496,7 @@ mod var_int {
 }
 
 mod var_long {
-    use crate::{DecodeError, EncodeError, Encoder};
+    use crate::{DecodeError, EncodeError};
     use mc_varint::{VarIntRead, VarIntWrite};
     use std::io::{Read, Write};
 
@@ -512,7 +512,7 @@ mod var_long {
 }
 
 mod rest {
-    use crate::{DecodeError, Decoder, EncodeError, Encoder};
+    use crate::{DecodeError, EncodeError};
     use std::io::{Read, Write};
 
     pub fn encode<W: Write>(value: &[u8], writer: &mut W) -> Result<(), EncodeError> {
@@ -531,8 +531,7 @@ mod rest {
 
 mod uuid_hyp_str {
     use crate::{
-        DecodeError, Decoder, DecoderReadExt, EncodeError, Encoder, EncoderWriteExt,
-        HYPHENATED_UUID_LENGTH,
+        DecodeError, DecoderReadExt, EncodeError, EncoderWriteExt, HYPHENATED_UUID_LENGTH,
     };
     use std::io::{Read, Write};
     use uuid::Uuid;

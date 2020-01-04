@@ -37,23 +37,16 @@ fn impl_encoder_trait(name: &Ident, fields: &Fields) -> TokenStream2 {
         let unparsed_meta = get_packet_field_meta(field);
         let parsed_meta = parse_packet_field_meta(&unparsed_meta);
 
-        match parsed_meta.module {
-            Some(module) => {
-                let module_ident = Ident::new(&module, Span::call_site());
+        let module = parsed_meta.module.as_deref().unwrap_or("Encoder");
+        let module_ident = Ident::new(&module, Span::call_site());
 
-                quote! {
-                    crate::#module_ident::encode(&self.#name, writer)?;
-                }
-            }
-            None => {
-                quote! {
-                    crate::Encoder::encode(&self.#name, writer)?;
-                }
-            }
+        quote! {
+            crate::#module_ident::encode(&self.#name, writer)?;
         }
     });
 
     quote! {
+        #[automatically_derived]
         impl crate::Encoder for #name {
             fn encode<W: std::io::Write>(&self, writer: &mut W) -> Result<(), crate::EncodeError> {
                 #encode
@@ -65,18 +58,48 @@ fn impl_encoder_trait(name: &Ident, fields: &Fields) -> TokenStream2 {
 }
 
 fn impl_decoder_trait(name: &Ident, fields: &Fields) -> TokenStream2 {
-    let decode = quote_field(fields, |_field| {
+    let decode = quote_field(fields, |field| {
+        let name = &field.ident;
+        let ty = &field.ty;
+
+        let unparsed_meta = get_packet_field_meta(field);
+        let parsed_meta = parse_packet_field_meta(&unparsed_meta);
+
+        match parsed_meta.module {
+            Some(module) => {
+                let module_ident = Ident::new(&module, Span::call_site());
+
+                quote! {
+                    let #name = crate::#module_ident::decode(reader)?;
+                }
+            }
+            None => {
+                quote! {
+                    let #name = <#ty as crate::Decoder>::decode(reader)?;
+                }
+            }
+        }
+    });
+
+    let create = quote_field(fields, |field| {
+        let name = &field.ident;
+
         quote! {
-           todo!();
+             #name,
         }
     });
 
     quote! {
+        #[automatically_derived]
         impl crate::Decoder for #name {
             type Output = Self;
 
             fn decode<R: std::io::Read>(reader: &mut R) -> Result<Self::Output, crate::DecodeError> {
                 #decode
+
+                Ok(#name {
+                    #create
+                })
             }
         }
     }
