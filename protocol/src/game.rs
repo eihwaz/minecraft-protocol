@@ -18,6 +18,7 @@ pub enum GameClientBoundPacket {
     JoinGame(JoinGame),
     ClientBoundKeepAlive(ClientBoundKeepAlive),
     ChunkData(ChunkData),
+    GameDisconnect(GameDisconnect),
 }
 
 impl GameServerBoundPacket {
@@ -49,6 +50,7 @@ impl GameClientBoundPacket {
     pub fn get_type_id(&self) -> u8 {
         match self {
             GameClientBoundPacket::ClientBoundChatMessage(_) => 0x0E,
+            GameClientBoundPacket::GameDisconnect(_) => 0x1A,
             GameClientBoundPacket::ClientBoundKeepAlive(_) => 0x20,
             GameClientBoundPacket::ChunkData(_) => 0x21,
             GameClientBoundPacket::JoinGame(_) => 0x25,
@@ -61,6 +63,11 @@ impl GameClientBoundPacket {
                 let chat_message = ClientBoundChatMessage::decode(reader)?;
 
                 Ok(GameClientBoundPacket::ClientBoundChatMessage(chat_message))
+            }
+            0x1A => {
+                let game_disconnect = GameDisconnect::decode(reader)?;
+
+                Ok(GameClientBoundPacket::GameDisconnect(game_disconnect))
             }
             0x20 => {
                 let keep_alive = ClientBoundKeepAlive::decode(reader)?;
@@ -229,12 +236,25 @@ impl ChunkData {
     }
 }
 
+#[derive(Packet, Debug)]
+pub struct GameDisconnect {
+    pub reason: Message,
+}
+
+impl GameDisconnect {
+    pub fn new(reason: Message) -> GameClientBoundPacket {
+        let game_disconnect = GameDisconnect { reason };
+
+        GameClientBoundPacket::GameDisconnect(game_disconnect)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use crate::chat::{Message, Payload};
     use crate::game::{
-        ChunkData, ClientBoundChatMessage, ClientBoundKeepAlive, GameMode, JoinGame,
-        MessagePosition, ServerBoundChatMessage, ServerBoundKeepAlive,
+        ChunkData, ClientBoundChatMessage, ClientBoundKeepAlive, GameDisconnect, GameMode,
+        JoinGame, MessagePosition, ServerBoundChatMessage, ServerBoundKeepAlive,
     };
     use crate::{DecodeError, Encoder, EncoderWriteExt, STRING_MAX_LENGTH};
     use crate::{Decoder, EncodeError};
@@ -453,5 +473,32 @@ mod tests {
         assert_eq!(chunk_data.data, vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
         assert_eq!(chunk_data.primary_mask, 65535);
         assert_eq!(chunk_data.tiles[0].name, Some(String::from("TileEntity")));
+    }
+
+    #[test]
+    fn test_game_disconnect_encode() {
+        let game_disconnect = GameDisconnect {
+            reason: Message::new(Payload::text("Message")),
+        };
+
+        let mut vec = Vec::new();
+        game_disconnect.encode(&mut vec).unwrap();
+
+        assert_eq!(
+            vec,
+            include_bytes!("../test/packet/game/game_disconnect.dat").to_vec()
+        );
+    }
+
+    #[test]
+    fn test_game_disconnect_decode() {
+        let mut cursor =
+            Cursor::new(include_bytes!("../test/packet/game/game_disconnect.dat").to_vec());
+        let game_disconnect = GameDisconnect::decode(&mut cursor).unwrap();
+
+        assert_eq!(
+            game_disconnect.reason,
+            Message::new(Payload::text("Message"))
+        );
     }
 }
