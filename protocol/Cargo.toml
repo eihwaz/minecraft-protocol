@@ -11,12 +11,11 @@ keywords = ["minecraft", "protocol", "packet", "io"]
 readme = "README.md"
 
 [dependencies]
-minecraft-protocol-derive = { path = "../protocol-derive" }
+minecraft-protocol-derive = { version = "0.0.0", path = "../protocol-derive" }
 byteorder = "1"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 uuid = { version = "0.7", features = ["v4", "serde"] }
-mc-varint = { git = "https://github.com/luojia65/mc-varint" }
 num-traits = "0.2"
 num-derive = "0.2"
 named-binary-tag = "0.2"

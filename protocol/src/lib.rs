@@ -3,11 +3,10 @@
 //! Information about protocol can be found at https://wiki.vg/Protocol.
 use io::Error as IoError;
 use std::io;
-use std::io::{Read, Write};
+use std::io::{Cursor, Read, Write};
 use std::string::FromUtf8Error;
 
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
-use mc_varint::{VarIntRead, VarIntWrite};
 use serde_json::error::Error as JsonError;
 use uuid::parser::ParseError as UuidParseError;
 
@@ -94,6 +93,9 @@ pub enum DecodeError {
     TagDecodeError {
         tag_decode_error: TagDecodeError,
     },
+    VarIntTooLong {
+        max_bytes: usize,
+    },
 }
 
 impl From<IoError> for DecodeError {
@@ -136,6 +138,56 @@ trait Decoder {
     fn decode<R: Read>(reader: &mut R) -> Result<Self::Output, DecodeError>;
 }
 
+macro_rules! write_signed_var_int (
+    ($type: ident, $name: ident) => (
+        fn $name(&mut self, mut value: $type) -> Result<(), EncodeError> {
+            loop {
+                let mut byte = (value & 0b01111111) as u8;
+                value = value >> 7;
+
+                if value != 0 {
+                    byte |= 0b10000000;
+                }
+
+                self.write_u8(byte)?;
+
+                if value == 0 {
+                   break;
+                }
+            }
+
+            Ok(())
+        }
+    )
+);
+
+macro_rules! read_signed_var_int (
+    ($type: ident, $name: ident, $max_bytes: expr) => (
+        fn $name(&mut self) -> Result<$type, DecodeError> {
+            let mut bytes = 0;
+            let mut output = 0;
+
+            loop {
+                let byte = self.read_u8()?;
+                let value = (byte & 0b01111111) as $type;
+
+                output |= value << 7 * bytes;
+                bytes += 1;
+
+                if bytes > $max_bytes {
+                    return Err(DecodeError::VarIntTooLong { max_bytes: $max_bytes })
+                }
+
+                if (byte & 0b10000000) == 0 {
+                    break;
+                }
+            }
+
+            Ok(output)
+        }
+   );
+);
+
 /// Trait adds additional helper methods for `Write` to write protocol data.
 trait EncoderWriteExt {
     fn write_bool(&mut self, value: bool) -> Result<(), EncodeError>;
@@ -149,6 +201,10 @@ trait EncoderWriteExt {
     fn write_enum<T: ToPrimitive>(&mut self, value: &T) -> Result<(), EncodeError>;
 
     fn write_compound_tag(&mut self, value: &CompoundTag) -> Result<(), EncodeError>;
+
+    fn write_var_i32(&mut self, value: i32) -> Result<(), EncodeError>;
+
+    fn write_var_i64(&mut self, value: i64) -> Result<(), EncodeError>;
 }
 
 /// Trait adds additional helper methods for `Read` to read protocol data.
@@ -164,6 +220,10 @@ trait DecoderReadExt {
     fn read_enum<T: FromPrimitive>(&mut self) -> Result<T, DecodeError>;
 
     fn read_compound_tag(&mut self) -> Result<CompoundTag, DecodeError>;
+
+    fn read_var_i32(&mut self) -> Result<i32, DecodeError>;
+
+    fn read_var_i64(&mut self) -> Result<i64, DecodeError>;
 }
 
 impl<W: Write> EncoderWriteExt for W {
@@ -213,6 +273,9 @@ impl<W: Write> EncoderWriteExt for W {
 
         Ok(())
     }
+
+    write_signed_var_int!(i32, write_var_i32);
+    write_signed_var_int!(i64, write_var_i64);
 }
 
 impl<R: Read> DecoderReadExt for R {
@@ -263,6 +326,9 @@ impl<R: Read> DecoderReadExt for R {
     fn read_compound_tag(&mut self) -> Result<CompoundTag, DecodeError> {
         Ok(nbt::decode::read_compound_tag(self)?)
     }
+
+    read_signed_var_int!(i32, read_var_i32, 5);
+    read_signed_var_int!(i64, read_var_i64, 10);
 }
 
 impl Encoder for u8 {
@@ -481,7 +547,7 @@ macro_rules! impl_json_encoder_decoder (
 
 mod var_int {
     use crate::{DecodeError, EncodeError};
-    use mc_varint::{VarIntRead, VarIntWrite};
+    use crate::{DecoderReadExt, EncoderWriteExt};
     use std::io::{Read, Write};
 
     pub fn encode<W: Write>(value: &i32, writer: &mut W) -> Result<(), EncodeError> {
@@ -497,7 +563,7 @@ mod var_int {
 
 mod var_long {
     use crate::{DecodeError, EncodeError};
-    use mc_varint::{VarIntRead, VarIntWrite};
+    use crate::{DecoderReadExt, EncoderWriteExt};
     use std::io::{Read, Write};
 
     pub fn encode<W: Write>(value: &i64, writer: &mut W) -> Result<(), EncodeError> {
@@ -549,4 +615,36 @@ mod uuid_hyp_str {
 
         Ok(uuid)
     }
+}
+
+#[test]
+fn test_read_variable_i32_2_bytes_value() {
+    let mut cursor = Cursor::new(vec![0b10101100, 0b00000010]);
+    let value = cursor.read_var_i32().unwrap();
+
+    assert_eq!(value, 300);
+}
+
+#[test]
+fn test_read_variable_i32_5_bytes_value() {
+    let mut cursor = Cursor::new(vec![0xff, 0xff, 0xff, 0xff, 0x07]);
+    let value = cursor.read_var_i32().unwrap();
+
+    assert_eq!(value, 2147483647);
+}
+
+#[test]
+fn test_write_variable_i32_2_bytes_value() {
+    let mut cursor = Cursor::new(Vec::with_capacity(5));
+    cursor.write_var_i32(300).unwrap();
+
+    assert_eq!(cursor.into_inner(), vec![0b10101100, 0b00000010]);
+}
+
+#[test]
+fn test_write_variable_i32_5_bytes_value() {
+    let mut cursor = Cursor::new(Vec::with_capacity(5));
+    cursor.write_var_i32(2147483647).unwrap();
+
+    assert_eq!(cursor.into_inner(), vec![0xff, 0xff, 0xff, 0xff, 0x07]);
 }
