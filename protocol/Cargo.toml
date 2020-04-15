@@ -8,7 +8,7 @@ license = "MIT"
 homepage = "https://github.com/eihwaz/minecraft-protocol"
 repository = "https://github.com/eihwaz/minecraft-protocol"
 keywords = ["minecraft", "protocol", "packet", "io"]
-readme = "README.md"
+readme = "../README.md"
 
 [dependencies]
 minecraft-protocol-derive = { version = "0.0.0", path = "../protocol-derive" }
