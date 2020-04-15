@@ -4,7 +4,6 @@ version = "0.0.0"
 authors = ["vagola <vladislavs.golubs@yandex.ru>"]
 edition = "2018"
 description = "Derive macro for reading and writing Minecraft packets"
-publish = false
 
 [lib]
 proc-macro = true
