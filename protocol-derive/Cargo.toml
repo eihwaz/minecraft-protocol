@@ -4,6 +4,10 @@ version = "0.0.0"
 authors = ["vagola <vladislavs.golubs@yandex.ru>"]
 edition = "2018"
 description = "Derive macro for reading and writing Minecraft packets"
+license = "MIT"
+homepage = "https://github.com/eihwaz/minecraft-protocol"
+repository = "https://github.com/eihwaz/minecraft-protocol"
+keywords = ["minecraft", "protocol", "packet", "io"]
 
 [lib]
 proc-macro = true
