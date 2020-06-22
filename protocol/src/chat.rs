@@ -62,11 +62,13 @@
 //! ```
 
 use crate::impl_json_encoder_decoder;
-use serde::{Deserialize, Serialize};
+use serde::{
+    de::{self, Visitor},
+    Deserialize, Serialize,
+};
 use serde_json::Error;
 
-#[derive(Debug, Eq, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "snake_case")]
+#[derive(Debug, Eq, PartialEq)]
 pub enum Color {
     Black,
     DarkBlue,
@@ -84,6 +86,93 @@ pub enum Color {
     LightPurple,
     Yellow,
     White,
+    /// A hex color string
+    ///
+    /// Support for this was added in 1.16.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use minecraft_protocol::chat::Color;
+    ///
+    /// let color = Color::Hex("#f98aff".into());
+    /// ```
+    Hex(String),
+}
+
+impl Serialize for Color {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        serializer.serialize_str(match self {
+            Color::Black => "black",
+            Color::DarkBlue => "dark_blue",
+            Color::DarkGreen => "dark_green",
+            Color::DarkAqua => "dark_aqua",
+            Color::DarkRed => "dark_red",
+            Color::DarkPurple => "dark_purple",
+            Color::Gold => "gold",
+            Color::Gray => "gray",
+            Color::DarkGray => "dark_gray",
+            Color::Blue => "blue",
+            Color::Green => "green",
+            Color::Aqua => "aqua",
+            Color::Red => "red",
+            Color::LightPurple => "light_purple",
+            Color::Yellow => "yellow",
+            Color::White => "white",
+            Color::Hex(val) => val,
+        })
+    }
+}
+
+struct ColorVisitor;
+
+impl<'de> Visitor<'de> for ColorVisitor {
+    type Value = Color;
+
+    fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+        formatter.write_str("a hex color string or a pre-defined color name")
+    }
+
+    fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
+    where
+        E: de::Error,
+    {
+        Ok(if v.starts_with("#") {
+            Color::Hex(v.into())
+        } else {
+            match v {
+                "black" => Color::Black,
+                "dark_blue" => Color::DarkBlue,
+                "dark_green" => Color::DarkGreen,
+                "dark_aqua" => Color::DarkAqua,
+                "dark_red" => Color::DarkRed,
+                "dark_purple" => Color::DarkPurple,
+                "gold" => Color::Gold,
+                "gray" => Color::Gray,
+                "dark_gray" => Color::DarkGray,
+                "blue" => Color::Blue,
+                "green" => Color::Green,
+                "aqua" => Color::Aqua,
+                "red" => Color::Red,
+                "light_purple" => Color::LightPurple,
+                "yellow" => Color::Yellow,
+                "white" => Color::White,
+                _ => return Err(E::invalid_value(de::Unexpected::Str(v), &self)),
+            }
+        })
+    }
+}
+
+impl<'de> Deserialize<'de> for Color {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        deserializer.deserialize_str(ColorVisitor)
+    }
 }
 
 #[derive(Debug, Eq, PartialEq, Serialize, Deserialize)]
@@ -629,5 +718,29 @@ fn test_deserialize_hover_show_entity() {
     assert_eq!(
         expected_message,
         Message::from_json(include_str!("../test/chat/hover_show_entity.json")).unwrap()
+    );
+}
+
+#[test]
+fn test_serialize_hex_color() {
+    let message = MessageBuilder::builder(Payload::text("Hello"))
+        .color(Color::Hex("#ffffff".into()))
+        .build();
+
+    assert_eq!(
+        message.to_json().unwrap(),
+        include_str!("../test/chat/hex_color.json")
+    );
+}
+
+#[test]
+fn test_deserialize_hex_color() {
+    let expected_message = MessageBuilder::builder(Payload::text("Hello"))
+        .color(Color::Hex("#ffffff".into()))
+        .build();
+
+    assert_eq!(
+        Message::from_json(include_str!("../test/chat/hex_color.json")).unwrap(),
+        expected_message
     );
 }
