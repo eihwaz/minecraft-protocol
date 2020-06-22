@@ -62,7 +62,10 @@
 //! ```
 
 use crate::impl_json_encoder_decoder;
-use serde::{Deserialize, Serialize};
+use serde::{
+    de::{self, Visitor},
+    Deserialize, Serialize,
+};
 use serde_json::Error;
 
 #[derive(Debug, Eq, PartialEq)]
@@ -97,55 +100,78 @@ pub enum Color {
     Hex(String),
 }
 
-impl From<String> for Color {
-    fn from(val: String) -> Self {
-        if val.starts_with("#") {
-            Self::Hex(val)
-        } else {
-            match val.as_ref() {
-                "black" => Self::Black,
-                "dark_blue" => Self::DarkBlue,
-                "dark_green" => Self::DarkGreen,
-                "dark_aqua" => Self::DarkAqua,
-                "dark_red" => Self::DarkRed,
-                "dark_purple" => Self::DarkPurple,
-                "gold" => Self::Gold,
-                "gray" => Self::Gray,
-                "dark_gray" => Self::DarkGray,
-                "blue" => Self::Blue,
-                "green" => Self::Green,
-                "aqua" => Self::Aqua,
-                "red" => Self::Red,
-                "light_purple" => Self::LightPurple,
-                "yellow" => Self::Yellow,
-                "white" => Self::White,
-                _ => unreachable!(),
-            }
-        }
+impl Serialize for Color {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        serializer.serialize_str(match self {
+            Color::Black => "black",
+            Color::DarkBlue => "dark_blue",
+            Color::DarkGreen => "dark_green",
+            Color::DarkAqua => "dark_aqua",
+            Color::DarkRed => "dark_red",
+            Color::DarkPurple => "dark_purple",
+            Color::Gold => "gold",
+            Color::Gray => "gray",
+            Color::DarkGray => "dark_gray",
+            Color::Blue => "blue",
+            Color::Green => "green",
+            Color::Aqua => "aqua",
+            Color::Red => "red",
+            Color::LightPurple => "light_purple",
+            Color::Yellow => "yellow",
+            Color::White => "white",
+            Color::Hex(val) => val,
+        })
     }
 }
 
-impl ToString for Color {
-    fn to_string(&self) -> String {
-        match self {
-            Color::Black => "black".into(),
-            Color::DarkBlue => "dark_blue".into(),
-            Color::DarkGreen => "dark_green".into(),
-            Color::DarkAqua => "dark_aqua".into(),
-            Color::DarkRed => "dark_red".into(),
-            Color::DarkPurple => "dark_purple".into(),
-            Color::Gold => "gold".into(),
-            Color::Gray => "gray".into(),
-            Color::DarkGray => "dark_gray".into(),
-            Color::Blue => "blue".into(),
-            Color::Green => "green".into(),
-            Color::Aqua => "aqua".into(),
-            Color::Red => "red".into(),
-            Color::LightPurple => "light_purple".into(),
-            Color::Yellow => "yellow".into(),
-            Color::White => "white".into(),
-            Color::Hex(val) => { val.into() }
-        }
+struct ColorVisitor;
+
+impl<'de> Visitor<'de> for ColorVisitor {
+    type Value = Color;
+
+    fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+        formatter.write_str("a hex color string or a pre-defined color name")
+    }
+
+    fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
+    where
+        E: de::Error,
+    {
+        Ok(if v.starts_with("#") {
+            Color::Hex(v.into())
+        } else {
+            match v {
+                "black" => Color::Black,
+                "dark_blue" => Color::DarkBlue,
+                "dark_green" => Color::DarkGreen,
+                "dark_aqua" => Color::DarkAqua,
+                "dark_red" => Color::DarkRed,
+                "dark_purple" => Color::DarkPurple,
+                "gold" => Color::Gold,
+                "gray" => Color::Gray,
+                "dark_gray" => Color::DarkGray,
+                "blue" => Color::Blue,
+                "green" => Color::Green,
+                "aqua" => Color::Aqua,
+                "red" => Color::Red,
+                "light_purple" => Color::LightPurple,
+                "yellow" => Color::Yellow,
+                "white" => Color::White,
+                _ => return Err(E::invalid_value(de::Unexpected::Str(v), &self)),
+            }
+        })
+    }
+}
+
+impl<'de> Deserialize<'de> for Color {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        deserializer.deserialize_str(ColorVisitor)
     }
 }
 
@@ -268,7 +294,7 @@ pub struct Message {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub obfuscated: Option<bool>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub color: Option<String>,
+    pub color: Option<Color>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub insertion: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -354,7 +380,7 @@ impl MessageBuilder {
     }
 
     pub fn color(mut self, color: Color) -> Self {
-        self.current.color = Some(color.to_string());
+        self.current.color = Some(color);
         self
     }
 
