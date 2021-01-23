@@ -1,0 +1,27 @@
+
+pub enum {{protocol_state_name}} {
+{{~#each packets as |p|}}
+    {{p.name}}{{#unless @last}},{{/unless}}
+{{~/each}}
+}
+
+impl {{protocol_state_name}} {
+    pub fn get_type_id(&self) -> u8 {
+        match self {
+        {{~#each packets as |p|}}
+            Self::{{p.name}} => {{@index}}{{#unless @last}},{{/unless}}
+        {{~/each}}
+        }
+    }
+
+    pub fn decode<R: Read>(type_id: u8, reader: &mut R) -> Result<Self, DecodeError> {
+        match type_id {
+        {{~#each packets as |p|}}
+            {{@index}} => {
+                Ok(Self::{{p.name}})
+            }
+        {{~/each}}
+            _ => Err(DecodeError::UnknownPacketType { type_id })
+        }
+    }
+}

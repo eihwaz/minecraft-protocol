@@ -1,18 +1,16 @@
 [package]
-name = "minecraft-protocol-derive"
+name = "minecraft-protocol-generator"
 version = "0.0.0"
 authors = ["vagola <vladislavs.golubs@yandex.ru>"]
 edition = "2018"
-description = "Derive macro for reading and writing Minecraft packets"
+description = "CLI for generating Rust code with Minecraft packets"
 license = "MIT"
 homepage = "https://github.com/eihwaz/minecraft-protocol"
 repository = "https://github.com/eihwaz/minecraft-protocol"
-keywords = ["minecraft", "derive", "protocol", "packet", "io"]
-
-[lib]
-proc-macro = true
+keywords = ["minecraft", "cli", "protocol", "packet", "io"]
 
 [dependencies]
-proc-macro2 = "1.0"
-syn = "1.0"
-quote = "1.0"
+clap = "2.33.3"
+serde = "1.0.120"
+serde_json = "1.0"
+handlebars = "3.5.2"
