@@ -1,4 +1,5 @@
 use serde::Serialize;
+use std::collections::HashSet;
 use std::fmt;
 use std::fmt::Display;
 
@@ -7,6 +8,17 @@ pub enum State {
     Status,
     Login,
     Game,
+}
+
+impl State {
+    pub fn data_import(&self) -> &str {
+        match self {
+            State::Handshake => "crate::packet::handshake",
+            State::Status => "crate::packet::status",
+            State::Login => "crate::packet::login",
+            State::Game => "crate::packet::game",
+        }
+    }
 }
 
 impl Display for State {
@@ -108,6 +120,19 @@ pub enum DataType {
     RefType {
         ref_name: String,
     },
+    Chat,
+}
+
+impl DataType {
+    pub fn import<'a>(&self, state: &'a State) -> Option<&'a str> {
+        match self {
+            DataType::Uuid { .. } => Some("uuid::Uuid"),
+            DataType::CompoundTag => Some("nbt::CompoundTag"),
+            DataType::RefType { .. } => Some(state.data_import()),
+            DataType::Chat => Some("crate::chat::Message"),
+            _ => None,
+        }
+    }
 }
 
 pub struct Protocol {
@@ -129,21 +154,12 @@ impl Protocol {
         }
     }
 
-    pub fn contains_field_with_type(&self, data_type: DataType) -> bool {
+    pub fn data_type_imports(&self) -> HashSet<&str> {
         self.server_bound_packets
             .iter()
             .chain(self.client_bound_packets.iter())
             .flat_map(|p| p.fields.iter())
-            .find(|f| f.data_type == data_type)
-            .is_some()
-    }
-
-    pub fn contains_field_with_predicate<F: Fn(&Field) -> bool>(&self, fun: F) -> bool {
-        self.server_bound_packets
-            .iter()
-            .chain(self.client_bound_packets.iter())
-            .flat_map(|p| p.fields.iter())
-            .find(|f| fun(*f))
-            .is_some()
+            .filter_map(|f| f.data_type.import(&self.state))
+            .collect()
     }
 }

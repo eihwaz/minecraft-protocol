@@ -123,16 +123,7 @@ pub fn generate_rust_file<W: Write>(
         "minecraft_protocol_derive::Packet",
     ];
 
-    if protocol.contains_field_with_predicate(|f| match f.data_type {
-        DataType::Uuid { .. } => true,
-        _ => false,
-    }) {
-        imports.push("uuid::Uuid")
-    }
-
-    if protocol.contains_field_with_type(DataType::CompoundTag) {
-        imports.push("nbt::CompoundTag")
-    }
+    imports.extend(protocol.data_type_imports().iter());
 
     template_engine.render_to_write(
         "protocol_imports",

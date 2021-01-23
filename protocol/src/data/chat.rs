@@ -6,7 +6,7 @@
 //! ## Serialize
 //!
 //! ```
-//! use minecraft_protocol::chat::{Payload, Color, MessageBuilder};
+//! use minecraft_protocol::data::chat::{Payload, Color, MessageBuilder};
 //!
 //! let message = MessageBuilder::builder(Payload::text("Hello"))
 //!    .color(Color::Yellow)
@@ -25,7 +25,7 @@
 //! ## Deserialize
 //!
 //! ```
-//! use minecraft_protocol::chat::{MessageBuilder, Color, Payload, Message};
+//! use minecraft_protocol::data::chat::{MessageBuilder, Color, Payload, Message};
 //!
 //! let json = r#"
 //! {
@@ -93,7 +93,7 @@ pub enum Color {
     /// # Examples
     ///
     /// ```
-    /// use minecraft_protocol::chat::Color;
+    /// use minecraft_protocol::data::chat::Color;
     ///
     /// let color = Color::Hex("#f98aff".into());
     /// ```
@@ -444,7 +444,7 @@ fn test_serialize_text_hello_world() {
 
     assert_eq!(
         message.to_json().unwrap(),
-        include_str!("../test/chat/text_hello_world.json")
+        include_str!("../../test/chat/text_hello_world.json")
     );
 }
 
@@ -463,7 +463,7 @@ fn test_deserialize_text_hello_world() {
 
     assert_eq!(
         expected_message,
-        Message::from_json(include_str!("../test/chat/text_hello_world.json")).unwrap()
+        Message::from_json(include_str!("../../test/chat/text_hello_world.json")).unwrap()
     );
 }
 
@@ -474,7 +474,7 @@ fn test_serialize_translate_opped_steve() {
 
     assert_eq!(
         message.to_json().unwrap(),
-        include_str!("../test/chat/translate_opped_steve.json")
+        include_str!("../../test/chat/translate_opped_steve.json")
     );
 }
 
@@ -485,7 +485,7 @@ fn test_deserialize_translate_opped_steve() {
 
     assert_eq!(
         expected_message,
-        Message::from_json(include_str!("../test/chat/translate_opped_steve.json")).unwrap()
+        Message::from_json(include_str!("../../test/chat/translate_opped_steve.json")).unwrap()
     );
 }
 
@@ -503,7 +503,7 @@ fn test_serialize_keybind_jump() {
 
     assert_eq!(
         message.to_json().unwrap(),
-        include_str!("../test/chat/keybind_jump.json")
+        include_str!("../../test/chat/keybind_jump.json")
     );
 }
 
@@ -521,7 +521,7 @@ fn test_deserialize_keybind_jump() {
 
     assert_eq!(
         expected_message,
-        Message::from_json(include_str!("../test/chat/keybind_jump.json")).unwrap()
+        Message::from_json(include_str!("../../test/chat/keybind_jump.json")).unwrap()
     );
 }
 
@@ -535,7 +535,7 @@ fn test_serialize_click_open_url() {
 
     assert_eq!(
         message.to_json().unwrap(),
-        include_str!("../test/chat/click_open_url.json")
+        include_str!("../../test/chat/click_open_url.json")
     );
 }
 
@@ -549,7 +549,7 @@ fn test_deserialize_click_open_url() {
 
     assert_eq!(
         expected_message,
-        Message::from_json(include_str!("../test/chat/click_open_url.json")).unwrap()
+        Message::from_json(include_str!("../../test/chat/click_open_url.json")).unwrap()
     );
 }
 
@@ -563,7 +563,7 @@ fn test_serialize_click_run_command() {
 
     assert_eq!(
         message.to_json().unwrap(),
-        include_str!("../test/chat/click_run_command.json")
+        include_str!("../../test/chat/click_run_command.json")
     );
 }
 
@@ -577,7 +577,7 @@ fn test_deserialize_click_run_command() {
 
     assert_eq!(
         expected_message,
-        Message::from_json(include_str!("../test/chat/click_run_command.json")).unwrap()
+        Message::from_json(include_str!("../../test/chat/click_run_command.json")).unwrap()
     );
 }
 
@@ -591,7 +591,7 @@ fn test_serialize_click_suggest_command() {
 
     assert_eq!(
         message.to_json().unwrap(),
-        include_str!("../test/chat/click_suggest_command.json")
+        include_str!("../../test/chat/click_suggest_command.json")
     );
 }
 
@@ -605,7 +605,7 @@ fn test_deserialize_click_suggest_command() {
 
     assert_eq!(
         expected_message,
-        Message::from_json(include_str!("../test/chat/click_suggest_command.json")).unwrap()
+        Message::from_json(include_str!("../../test/chat/click_suggest_command.json")).unwrap()
     );
 }
 
@@ -619,7 +619,7 @@ fn test_serialize_click_change_page() {
 
     assert_eq!(
         message.to_json().unwrap(),
-        include_str!("../test/chat/click_change_page.json")
+        include_str!("../../test/chat/click_change_page.json")
     );
 }
 
@@ -633,7 +633,7 @@ fn test_deserialize_click_change_page() {
 
     assert_eq!(
         expected_message,
-        Message::from_json(include_str!("../test/chat/click_change_page.json")).unwrap()
+        Message::from_json(include_str!("../../test/chat/click_change_page.json")).unwrap()
     );
 }
 
@@ -647,7 +647,7 @@ fn test_serialize_hover_show_text() {
 
     assert_eq!(
         message.to_json().unwrap(),
-        include_str!("../test/chat/hover_show_text.json")
+        include_str!("../../test/chat/hover_show_text.json")
     );
 }
 
@@ -661,7 +661,7 @@ fn test_deserialize_hover_show_text() {
 
     assert_eq!(
         expected_message,
-        Message::from_json(include_str!("../test/chat/hover_show_text.json")).unwrap()
+        Message::from_json(include_str!("../../test/chat/hover_show_text.json")).unwrap()
     );
 }
 
@@ -675,7 +675,7 @@ fn test_serialize_hover_show_item() {
 
     assert_eq!(
         message.to_json().unwrap(),
-        include_str!("../test/chat/hover_show_item.json")
+        include_str!("../../test/chat/hover_show_item.json")
     );
 }
 
@@ -689,7 +689,7 @@ fn test_deserialize_hover_show_item() {
 
     assert_eq!(
         expected_message,
-        Message::from_json(include_str!("../test/chat/hover_show_item.json")).unwrap()
+        Message::from_json(include_str!("../../test/chat/hover_show_item.json")).unwrap()
     );
 }
 
@@ -703,7 +703,7 @@ fn test_serialize_hover_show_entity() {
 
     assert_eq!(
         message.to_json().unwrap(),
-        include_str!("../test/chat/hover_show_entity.json")
+        include_str!("../../test/chat/hover_show_entity.json")
     );
 }
 
@@ -717,7 +717,7 @@ fn test_deserialize_hover_show_entity() {
 
     assert_eq!(
         expected_message,
-        Message::from_json(include_str!("../test/chat/hover_show_entity.json")).unwrap()
+        Message::from_json(include_str!("../../test/chat/hover_show_entity.json")).unwrap()
     );
 }
 
@@ -729,7 +729,7 @@ fn test_serialize_hex_color() {
 
     assert_eq!(
         message.to_json().unwrap(),
-        include_str!("../test/chat/hex_color.json")
+        include_str!("../../test/chat/hex_color.json")
     );
 }
 
@@ -740,7 +740,7 @@ fn test_deserialize_hex_color() {
         .build();
 
     assert_eq!(
-        Message::from_json(include_str!("../test/chat/hex_color.json")).unwrap(),
+        Message::from_json(include_str!("../../test/chat/hex_color.json")).unwrap(),
         expected_message
     );
 }
