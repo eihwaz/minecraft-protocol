@@ -17,22 +17,22 @@ pub fn main() {
 
     template_engine
         .register_template_file(
-            "protocol_imports",
-            "protocol-generator/templates/protocol_imports.hbs",
+            "packet_imports",
+            "protocol-generator/templates/packet_imports.hbs",
         )
         .expect("Failed to register template");
 
     template_engine
         .register_template_file(
-            "protocol_enum",
-            "protocol-generator/templates/protocol_enum.hbs",
+            "packet_enum",
+            "protocol-generator/templates/packet_enum.hbs",
         )
         .expect("Failed to register template");
 
     template_engine
         .register_template_file(
-            "protocol_structs",
-            "protocol-generator/templates/protocol_structs.hbs",
+            "packet_structs",
+            "protocol-generator/templates/packet_structs.hbs",
         )
         .expect("Failed to register template");
 
@@ -97,7 +97,7 @@ pub fn main() {
 
 #[derive(Serialize)]
 struct GenerateContext<'a> {
-    protocol_enum_name: String,
+    packet_enum_name: String,
     packets: &'a Vec<Packet>,
 }
 
@@ -107,12 +107,12 @@ pub fn generate_rust_file<W: Write>(
     mut writer: W,
 ) -> Result<(), TemplateRenderError> {
     let server_bound_ctx = GenerateContext {
-        protocol_enum_name: format!("{}{}BoundPacket", &protocol.state, Bound::Server),
+        packet_enum_name: format!("{}{}BoundPacket", &protocol.state, Bound::Server),
         packets: &protocol.server_bound_packets,
     };
 
     let client_bound_ctx = GenerateContext {
-        protocol_enum_name: format!("{}{}BoundPacket", &protocol.state, Bound::Client),
+        packet_enum_name: format!("{}{}BoundPacket", &protocol.state, Bound::Client),
         packets: &protocol.client_bound_packets,
     };
 
@@ -126,16 +126,16 @@ pub fn generate_rust_file<W: Write>(
     imports.extend(protocol.data_type_imports().iter());
 
     template_engine.render_to_write(
-        "protocol_imports",
+        "packet_imports",
         &json!({ "imports": imports }),
         &mut writer,
     )?;
 
-    template_engine.render_to_write("protocol_enum", &server_bound_ctx, &mut writer)?;
-    template_engine.render_to_write("protocol_enum", &client_bound_ctx, &mut writer)?;
+    template_engine.render_to_write("packet_enum", &server_bound_ctx, &mut writer)?;
+    template_engine.render_to_write("packet_enum", &client_bound_ctx, &mut writer)?;
 
-    template_engine.render_to_write("protocol_structs", &server_bound_ctx, &mut writer)?;
-    template_engine.render_to_write("protocol_structs", &client_bound_ctx, &mut writer)?;
+    template_engine.render_to_write("packet_structs", &server_bound_ctx, &mut writer)?;
+    template_engine.render_to_write("packet_structs", &client_bound_ctx, &mut writer)?;
 
     Ok(())
 }

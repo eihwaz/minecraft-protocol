@@ -1,7 +1,7 @@
 //! This crate implements Minecraft protocol.
 //!
 //! Information about protocol can be found at https://wiki.vg/Protocol.
-use std::io::{Read, Write};
+use std::io::{Cursor, Read, Write};
 
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 use nbt::CompoundTag;
@@ -493,6 +493,7 @@ mod rest {
 }
 
 mod uuid_hyp_str {
+    use std::io::Cursor;
     use std::io::{Read, Write};
 
     use uuid::Uuid;
