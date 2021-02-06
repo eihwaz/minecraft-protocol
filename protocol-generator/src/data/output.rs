@@ -52,13 +52,15 @@ impl Display for Bound {
 
 #[derive(Serialize)]
 pub struct Packet {
+    pub id: u8,
     pub name: String,
     pub fields: Vec<Field>,
 }
 
 impl Packet {
-    pub fn new(name: impl ToString, fields: Vec<Field>) -> Packet {
+    pub fn new(id: u8, name: impl ToString, fields: Vec<Field>) -> Packet {
         Packet {
+            id,
             name: name.to_string(),
             fields,
         }

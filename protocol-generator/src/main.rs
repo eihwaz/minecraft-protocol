@@ -2,12 +2,15 @@ mod data;
 
 use crate::data::input;
 use handlebars::*;
-use heck::SnakeCase;
+use heck::{CamelCase, KebabCase, MixedCase, SnakeCase, TitleCase};
 
+use crate::data::input::{Container, Data, ProtocolData, ProtocolState};
 use crate::data::output;
-use crate::data::output::Bound;
+use crate::data::output::{Bound, Packet, State};
+use linked_hash_map::LinkedHashMap;
 use serde::Serialize;
 use serde_json::json;
+use std::collections::HashMap;
 use std::fs::File;
 use std::io::Write;
 use structopt::StructOpt;
@@ -31,10 +34,35 @@ pub fn main() {
     let protocol_data_file =
         File::open(protocol_data_file_name).expect("Failed to open protocol data file");
 
-    let protocol_data: input::Protocol =
+    let protocol_input: input::Protocol =
         serde_json::from_reader(protocol_data_file).expect("Failed to parse protocol data");
 
-    println!("{:#?}", protocol_data)
+    let protocols = vec![
+        (
+            transform_protocol_state(State::Handshake, &protocol_input.handshaking),
+            State::Handshake,
+        ),
+        (
+            transform_protocol_state(State::Status, &protocol_input.status),
+            State::Status,
+        ),
+        (
+            transform_protocol_state(State::Login, &protocol_input.login),
+            State::Login,
+        ),
+        (
+            transform_protocol_state(State::Game, &protocol_input.game),
+            State::Game,
+        ),
+    ];
+
+    for (protocol, state) in protocols {
+        let file_name = format!("{}.rs", state.to_string().to_lowercase());
+        let file = File::create(file_name).expect("Failed to create file");
+
+        generate_rust_file(&protocol, &template_engine, &file)
+            .expect("Failed to generate rust file");
+    }
 }
 
 fn create_template_engine() -> Handlebars<'static> {
@@ -68,13 +96,81 @@ fn create_template_engine() -> Handlebars<'static> {
     template_engine
 }
 
+fn transform_protocol_state(state: State, protocol_state: &ProtocolState) -> output::Protocol {
+    let server_bound_packets = transform_protocol_data(&protocol_state.to_server);
+    let client_bound_packets = transform_protocol_data(&protocol_state.to_client);
+
+    output::Protocol {
+        state,
+        server_bound_packets,
+        client_bound_packets,
+    }
+}
+
+fn transform_protocol_data(protocol_data: &ProtocolData) -> Vec<Packet> {
+    let mut packets = vec![];
+
+    let reversed_packet_ids = protocol_data
+        .types
+        .get("packet")
+        .and_then(|d| d.get(1))
+        .and_then(|d| match d {
+            Data::Container(data) => data.get(0),
+            _ => None,
+        })
+        .and_then(|c| match c {
+            Container::List { data, .. } => data.get(1),
+            _ => None,
+        })
+        .and_then(|d| match d {
+            Data::Mapper { mappings, .. } => Some(mappings),
+            _ => None,
+        })
+        .expect("Failed to get packet ids");
+
+    let packet_ids: HashMap<String, u8> = reversed_packet_ids
+        .into_iter()
+        .map(|(k, v)| {
+            (
+                v.clone(),
+                u8::from_str_radix(k.trim_start_matches("0x"), 16).expect("Invalid packet id"),
+            )
+        })
+        .collect();
+
+    for (unformatted_name, data) in protocol_data.types.iter() {
+        if !unformatted_name.starts_with("packet_")
+            || unformatted_name == "packet_legacy_server_list_ping"
+        {
+            continue;
+        }
+
+        let no_prefix_name = unformatted_name.trim_start_matches("packet_");
+
+        let id = *packet_ids
+            .get(no_prefix_name)
+            .expect("Failed to get packet id");
+        let name = no_prefix_name.to_camel_case();
+
+        let packet = Packet {
+            id,
+            name,
+            fields: vec![],
+        };
+
+        packets.push(packet);
+    }
+
+    packets
+}
+
 #[derive(Serialize)]
 struct GenerateContext<'a> {
     packet_enum_name: String,
     packets: &'a Vec<output::Packet>,
 }
 
-pub fn generate_rust_file<W: Write>(
+fn generate_rust_file<W: Write>(
     protocol: &output::Protocol,
     template_engine: &Handlebars,
     mut writer: W,
