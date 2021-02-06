@@ -1,14 +1,43 @@
 mod data;
 
-use crate::data::*;
+use crate::data::input;
 use handlebars::*;
 use heck::SnakeCase;
+
+use crate::data::output;
+use crate::data::output::Bound;
 use serde::Serialize;
 use serde_json::json;
 use std::fs::File;
 use std::io::Write;
+use structopt::StructOpt;
+
+#[derive(StructOpt)]
+#[structopt(name = "protocol-generator")]
+struct Opt {
+    #[structopt(short, long, default_value = "1.14.4")]
+    protocol_version: String,
+}
 
 pub fn main() {
+    let opt: Opt = Opt::from_args();
+    let template_engine = create_template_engine();
+
+    let protocol_data_file_name = format!(
+        "protocol-generator/minecraft-data/data/pc/{}/protocol.json",
+        opt.protocol_version
+    );
+
+    let protocol_data_file =
+        File::open(protocol_data_file_name).expect("Failed to open protocol data file");
+
+    let protocol_data: input::Protocol =
+        serde_json::from_reader(protocol_data_file).expect("Failed to parse protocol data");
+
+    println!("{:#?}", protocol_data)
+}
+
+fn create_template_engine() -> Handlebars<'static> {
     let mut template_engine = Handlebars::new();
 
     template_engine.register_helper("snake_case", Box::new(format_snake_case));
@@ -36,73 +65,17 @@ pub fn main() {
         )
         .expect("Failed to register template");
 
-    let protocol = Protocol::new(
-        State::Login,
-        vec![
-            Packet::new(
-                "LoginStart",
-                vec![Field::new("name", DataType::String { max_length: 256 })],
-            ),
-            Packet::new(
-                "EncryptionResponse",
-                vec![
-                    Field::new("shared_secret", DataType::ByteArray { rest: true }),
-                    Field::new("verify_token", DataType::ByteArray { rest: true }),
-                ],
-            ),
-            Packet::new(
-                "LoginPluginResponse",
-                vec![
-                    Field::new("message_id", DataType::Int { var_int: true }),
-                    Field::new("successful", DataType::Boolean),
-                    Field::new("data", DataType::ByteArray { rest: true }),
-                ],
-            ),
-        ],
-        vec![
-            Packet::new(
-                "LoginDisconnect",
-                vec![
-                    Field::new("hyphenated", DataType::Uuid { hyphenated: true }),
-                    Field::new("default", DataType::Uuid { hyphenated: false }),
-                ],
-            ),
-            Packet::new(
-                "EncryptionRequest",
-                vec![Field::new(
-                    "game_mode",
-                    DataType::RefType {
-                        ref_name: "GameMode".to_string(),
-                    },
-                )],
-            ),
-            Packet::new(
-                "LoginSuccess",
-                vec![Field::new(
-                    "server_status",
-                    DataType::RefType {
-                        ref_name: "ServerStatus".to_string(),
-                    },
-                )],
-            ),
-            Packet::new("SetCompression", vec![]),
-            Packet::new("LoginPluginRequest", vec![]),
-        ],
-    );
-
-    let file = File::create("login.rs").expect("Failed to create file");
-
-    generate_rust_file(&protocol, &template_engine, &file).expect("Failed to generate rust file");
+    template_engine
 }
 
 #[derive(Serialize)]
 struct GenerateContext<'a> {
     packet_enum_name: String,
-    packets: &'a Vec<Packet>,
+    packets: &'a Vec<output::Packet>,
 }
 
 pub fn generate_rust_file<W: Write>(
-    protocol: &Protocol,
+    protocol: &output::Protocol,
     template_engine: &Handlebars,
     mut writer: W,
 ) -> Result<(), TemplateRenderError> {

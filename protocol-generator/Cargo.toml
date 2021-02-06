@@ -10,7 +10,7 @@ repository = "https://github.com/eihwaz/minecraft-protocol"
 keywords = ["minecraft", "cli", "protocol", "packet", "io"]
 
 [dependencies]
-clap = "2.33.3"
+structopt = "0.3"
 serde = "1.0.120"
 serde_json = "1.0"
 handlebars = "3.5.2"
