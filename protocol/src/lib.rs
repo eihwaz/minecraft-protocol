@@ -239,6 +239,20 @@ impl Decoder for u8 {
     }
 }
 
+impl Encoder for u16 {
+    fn encode<W: Write>(&self, writer: &mut W) -> Result<(), EncodeError> {
+        Ok(writer.write_u16::<BigEndian>(*self)?)
+    }
+}
+
+impl Decoder for u16 {
+    type Output = Self;
+
+    fn decode<R: Read>(reader: &mut R) -> Result<Self::Output, DecodeError> {
+        Ok(reader.read_u16::<BigEndian>()?)
+    }
+}
+
 impl Encoder for i32 {
     fn encode<W: Write>(&self, writer: &mut W) -> Result<(), EncodeError> {
         Ok(writer.write_i32::<BigEndian>(*self)?)
