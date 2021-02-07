@@ -6,7 +6,6 @@ use heck::{CamelCase, SnakeCase};
 
 use crate::data::input::{Container, Data, ProtocolData, ProtocolState};
 use crate::data::output;
-use crate::data::output::Field;
 use serde::Serialize;
 use serde_json::json;
 use std::collections::HashMap;
@@ -49,10 +48,10 @@ pub fn main() {
             transform_protocol_state(output::State::Login, &protocol_input.login),
             output::State::Login,
         ),
-        // (
-        //     transform_protocol_state(output::State::Game, &protocol_input.game),
-        //     output::State::Game,
-        // ),
+        (
+            transform_protocol_state(output::State::Game, &protocol_input.game),
+            output::State::Game,
+        ),
     ];
 
     for (protocol, state) in protocols {
@@ -102,10 +101,16 @@ fn transform_protocol_state(
     state: output::State,
     protocol_state: &ProtocolState,
 ) -> output::Protocol {
-    let server_bound_packets =
-        transform_protocol_data(&protocol_state.to_server, output::Bound::Server);
-    let client_bound_packets =
-        transform_protocol_data(&protocol_state.to_client, output::Bound::Client);
+    let server_bound_packets = transform_protocol_data(
+        protocol_state,
+        &protocol_state.to_server,
+        output::Bound::Server,
+    );
+    let client_bound_packets = transform_protocol_data(
+        protocol_state,
+        &protocol_state.to_client,
+        output::Bound::Client,
+    );
 
     output::Protocol {
         state,
@@ -115,6 +120,7 @@ fn transform_protocol_state(
 }
 
 fn transform_protocol_data(
+    protocol_state: &ProtocolState,
     protocol_data: &ProtocolData,
     bound: output::Bound,
 ) -> Vec<output::Packet> {
@@ -128,12 +134,18 @@ fn transform_protocol_data(
             continue;
         }
 
-        let no_prefix_name = unformatted_name.trim_start_matches("packet_");
+        let no_prefix_unformatted = unformatted_name.trim_start_matches("packet_");
 
         let id = *packet_ids
-            .get(no_prefix_name)
+            .get(no_prefix_unformatted)
             .expect("Failed to get packet id");
-        let packet_name = rename_packet(&no_prefix_name.to_camel_case(), &bound);
+
+        let packet_name = rename_packet(
+            unformatted_name,
+            &no_prefix_unformatted.to_camel_case(),
+            &bound,
+            protocol_state,
+        );
 
         let mut fields = vec![];
 
@@ -248,8 +260,13 @@ fn transform_data_type(name: &str) -> Option<output::DataType> {
     }
 }
 
-fn rename_packet(name: &str, bound: &output::Bound) -> String {
-    match (name, bound) {
+fn rename_packet(
+    unformatted_name: &str,
+    name: &str,
+    bound: &output::Bound,
+    protocol_state: &ProtocolState,
+) -> String {
+    let new_name = match (name, bound) {
         ("EncryptionBegin", output::Bound::Server) => "EncryptionResponse",
         ("EncryptionBegin", output::Bound::Client) => "EncryptionRequest",
         ("PingStart", output::Bound::Server) => "StatusRequest",
@@ -258,7 +275,29 @@ fn rename_packet(name: &str, bound: &output::Bound) -> String {
         ("Ping", output::Bound::Client) => "PingResponse",
         _ => name,
     }
-    .to_owned()
+    .to_owned();
+
+    if new_name == name
+        && protocol_state
+            .to_client
+            .types
+            .contains_key(unformatted_name)
+        && protocol_state
+            .to_server
+            .types
+            .contains_key(unformatted_name)
+    {
+        bidirectional(&new_name, bound)
+    } else {
+        new_name.to_owned()
+    }
+}
+
+fn bidirectional(name: &str, bound: &output::Bound) -> String {
+    match bound {
+        output::Bound::Server => format!("ServerBound{}", name),
+        output::Bound::Client => format!("ClientBound{}", name),
+    }
 }
 
 fn modify_field(packet_name: &str, field: output::Field) -> output::Field {
@@ -268,6 +307,10 @@ fn modify_field(packet_name: &str, field: output::Field) -> output::Field {
         }),
         ("Success", "uuid") => field.change_type(output::DataType::Uuid { hyphenated: true }),
         ("Disconnect", "reason") => field.change_type(output::DataType::Chat),
+        ("ClientBoundChatMessage", "message") => field.change_type(output::DataType::Chat),
+        ("ClientBoundChatMessage", "position") => field.change_type(output::DataType::RefType {
+            ref_name: "MessagePosition".to_owned(),
+        }),
         _ => field,
     }
 }

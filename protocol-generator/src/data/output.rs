@@ -127,6 +127,7 @@ pub enum DataType {
     RefType {
         ref_name: String,
     },
+    #[serde(rename(serialize = "Message"))]
     Chat,
 }
 
@@ -136,7 +137,7 @@ impl DataType {
             DataType::Uuid { .. } => Some("uuid::Uuid"),
             DataType::CompoundTag => Some("nbt::CompoundTag"),
             DataType::RefType { .. } => Some(state.data_import()),
-            DataType::Chat => Some("crate::chat::Message"),
+            DataType::Chat => Some("crate::data::chat::Message"),
             _ => None,
         }
     }
