@@ -354,8 +354,11 @@ impl GameServerBoundPacket {
         Self::TeleportConfirm(teleport_confirm)
     }
 
-    pub fn query_block_nbt(transaction_id: i32) -> Self {
-        let query_block_nbt = QueryBlockNbt { transaction_id };
+    pub fn query_block_nbt(transaction_id: i32, location: Position) -> Self {
+        let query_block_nbt = QueryBlockNbt {
+            transaction_id,
+            location,
+        };
 
         Self::QueryBlockNbt(query_block_nbt)
     }
@@ -366,8 +369,12 @@ impl GameServerBoundPacket {
         Self::SetDifficulty(set_difficulty)
     }
 
-    pub fn edit_book(signing: bool, hand: i32) -> Self {
-        let edit_book = EditBook { signing, hand };
+    pub fn edit_book(new_book: Option<Slot>, signing: bool, hand: i32) -> Self {
+        let edit_book = EditBook {
+            new_book,
+            signing,
+            hand,
+        };
 
         Self::EditBook(edit_book)
     }
@@ -408,8 +415,9 @@ impl GameServerBoundPacket {
         Self::SetBeaconEffect(set_beacon_effect)
     }
 
-    pub fn update_command_block(command: String, mode: i32, flags: u8) -> Self {
+    pub fn update_command_block(location: Position, command: String, mode: i32, flags: u8) -> Self {
         let update_command_block = UpdateCommandBlock {
+            location,
             command,
             mode,
             flags,
@@ -433,6 +441,7 @@ impl GameServerBoundPacket {
     }
 
     pub fn update_structure_block(
+        location: Position,
         action: i32,
         mode: i32,
         name: String,
@@ -450,6 +459,7 @@ impl GameServerBoundPacket {
         flags: u8,
     ) -> Self {
         let update_structure_block = UpdateStructureBlock {
+            location,
             action,
             mode,
             name,
@@ -530,13 +540,21 @@ impl GameServerBoundPacket {
         Self::EnchantItem(enchant_item)
     }
 
-    pub fn window_click(window_id: u8, slot: i16, mouse_button: i8, action: i16, mode: i8) -> Self {
+    pub fn window_click(
+        window_id: u8,
+        slot: i16,
+        mouse_button: i8,
+        action: i16,
+        mode: i8,
+        item: Option<Slot>,
+    ) -> Self {
         let window_click = WindowClick {
             window_id,
             slot,
             mouse_button,
             action,
             mode,
+            item,
         };
 
         Self::WindowClick(window_click)
@@ -648,8 +666,12 @@ impl GameServerBoundPacket {
         Self::ServerBoundAbilities(server_bound_abilities)
     }
 
-    pub fn block_dig(status: i8, face: i8) -> Self {
-        let block_dig = BlockDig { status, face };
+    pub fn block_dig(status: i8, location: Position, face: i8) -> Self {
+        let block_dig = BlockDig {
+            status,
+            location,
+            face,
+        };
 
         Self::BlockDig(block_dig)
     }
@@ -692,18 +714,20 @@ impl GameServerBoundPacket {
         Self::ServerBoundHeldItemSlot(server_bound_held_item_slot)
     }
 
-    pub fn set_creative_slot(slot: i16) -> Self {
-        let set_creative_slot = SetCreativeSlot { slot };
+    pub fn set_creative_slot(slot: i16, item: Option<Slot>) -> Self {
+        let set_creative_slot = SetCreativeSlot { slot, item };
 
         Self::SetCreativeSlot(set_creative_slot)
     }
 
     pub fn update_jigsaw_block(
+        location: Position,
         attachment_type: String,
         target_pool: String,
         final_state: String,
     ) -> Self {
         let update_jigsaw_block = UpdateJigsawBlock {
+            location,
             attachment_type,
             target_pool,
             final_state,
@@ -712,8 +736,15 @@ impl GameServerBoundPacket {
         Self::UpdateJigsawBlock(update_jigsaw_block)
     }
 
-    pub fn update_sign(text1: String, text2: String, text3: String, text4: String) -> Self {
+    pub fn update_sign(
+        location: Position,
+        text1: String,
+        text2: String,
+        text3: String,
+        text4: String,
+    ) -> Self {
         let update_sign = UpdateSign {
+            location,
             text1,
             text2,
             text3,
@@ -737,6 +768,7 @@ impl GameServerBoundPacket {
 
     pub fn block_place(
         hand: i32,
+        location: Position,
         direction: i32,
         cursor_x: f32,
         cursor_y: f32,
@@ -745,6 +777,7 @@ impl GameServerBoundPacket {
     ) -> Self {
         let block_place = BlockPlace {
             hand,
+            location,
             direction,
             cursor_x,
             cursor_y,
@@ -810,7 +843,7 @@ pub enum GameClientBoundPacket {
     WorldEvent(WorldEvent),
     WorldParticles(WorldParticles),
     UpdateLight(UpdateLight),
-    Login(Login),
+    JoinGame(JoinGame),
     Map(Map),
     TradeList(TradeList),
     RelEntityMove(RelEntityMove),
@@ -819,7 +852,7 @@ pub enum GameClientBoundPacket {
     Entity(Entity),
     ClientBoundVehicleMove(ClientBoundVehicleMove),
     OpenBook(OpenBook),
-    OpenSignEntity,
+    OpenSignEntity(OpenSignEntity),
     CraftRecipeResponse(CraftRecipeResponse),
     ClientBoundAbilities(ClientBoundAbilities),
     CombatEvent(CombatEvent),
@@ -847,7 +880,7 @@ pub enum GameClientBoundPacket {
     SetPassengers(SetPassengers),
     Teams(Teams),
     ScoreboardScore(ScoreboardScore),
-    SpawnPosition,
+    SpawnPosition(SpawnPosition),
     UpdateTime(UpdateTime),
     Title(Title),
     EntitySoundEffect(EntitySoundEffect),
@@ -860,7 +893,7 @@ pub enum GameClientBoundPacket {
     EntityEffect(EntityEffect),
     SelectAdvancementTab(SelectAdvancementTab),
     DeclareRecipes,
-    Tags,
+    Tags(Tags),
     AcknowledgePlayerDigging(AcknowledgePlayerDigging),
 }
 
@@ -908,7 +941,7 @@ impl GameClientBoundPacket {
             Self::WorldEvent(_) => 0x22,
             Self::WorldParticles(_) => 0x23,
             Self::UpdateLight(_) => 0x24,
-            Self::Login(_) => 0x25,
+            Self::JoinGame(_) => 0x25,
             Self::Map(_) => 0x26,
             Self::TradeList(_) => 0x27,
             Self::RelEntityMove(_) => 0x28,
@@ -917,7 +950,7 @@ impl GameClientBoundPacket {
             Self::Entity(_) => 0x2B,
             Self::ClientBoundVehicleMove(_) => 0x2C,
             Self::OpenBook(_) => 0x2D,
-            Self::OpenSignEntity => 0x2F,
+            Self::OpenSignEntity(_) => 0x2F,
             Self::CraftRecipeResponse(_) => 0x30,
             Self::ClientBoundAbilities(_) => 0x31,
             Self::CombatEvent(_) => 0x32,
@@ -945,7 +978,7 @@ impl GameClientBoundPacket {
             Self::SetPassengers(_) => 0x4A,
             Self::Teams(_) => 0x4B,
             Self::ScoreboardScore(_) => 0x4C,
-            Self::SpawnPosition => 0x4D,
+            Self::SpawnPosition(_) => 0x4D,
             Self::UpdateTime(_) => 0x4E,
             Self::Title(_) => 0x4F,
             Self::EntitySoundEffect(_) => 0x50,
@@ -958,7 +991,7 @@ impl GameClientBoundPacket {
             Self::EntityEffect(_) => 0x59,
             Self::SelectAdvancementTab(_) => 0x3C,
             Self::DeclareRecipes => 0x5A,
-            Self::Tags => 0x5B,
+            Self::Tags(_) => 0x5B,
             Self::AcknowledgePlayerDigging(_) => 0x5C,
         }
     }
@@ -1167,9 +1200,9 @@ impl GameClientBoundPacket {
                 Ok(Self::UpdateLight(update_light))
             }
             0x25 => {
-                let login = Login::decode(reader)?;
+                let join_game = JoinGame::decode(reader)?;
 
-                Ok(Self::Login(login))
+                Ok(Self::JoinGame(join_game))
             }
             0x26 => {
                 let map = Map::decode(reader)?;
@@ -1211,7 +1244,11 @@ impl GameClientBoundPacket {
 
                 Ok(Self::OpenBook(open_book))
             }
-            0x2F => Ok(Self::OpenSignEntity),
+            0x2F => {
+                let open_sign_entity = OpenSignEntity::decode(reader)?;
+
+                Ok(Self::OpenSignEntity(open_sign_entity))
+            }
             0x30 => {
                 let craft_recipe_response = CraftRecipeResponse::decode(reader)?;
 
@@ -1345,7 +1382,11 @@ impl GameClientBoundPacket {
 
                 Ok(Self::ScoreboardScore(scoreboard_score))
             }
-            0x4D => Ok(Self::SpawnPosition),
+            0x4D => {
+                let spawn_position = SpawnPosition::decode(reader)?;
+
+                Ok(Self::SpawnPosition(spawn_position))
+            }
             0x4E => {
                 let update_time = UpdateTime::decode(reader)?;
 
@@ -1402,7 +1443,11 @@ impl GameClientBoundPacket {
                 Ok(Self::SelectAdvancementTab(select_advancement_tab))
             }
             0x5A => Ok(Self::DeclareRecipes),
-            0x5B => Ok(Self::Tags),
+            0x5B => {
+                let tags = Tags::decode(reader)?;
+
+                Ok(Self::Tags(tags))
+            }
             0x5C => {
                 let acknowledge_player_digging = AcknowledgePlayerDigging::decode(reader)?;
 
@@ -1481,6 +1526,7 @@ impl GameClientBoundPacket {
         velocity_x: i16,
         velocity_y: i16,
         velocity_z: i16,
+        metadata: Metadata,
     ) -> Self {
         let spawn_entity_living = SpawnEntityLiving {
             entity_id,
@@ -1495,6 +1541,7 @@ impl GameClientBoundPacket {
             velocity_x,
             velocity_y,
             velocity_z,
+            metadata,
         };
 
         Self::SpawnEntityLiving(spawn_entity_living)
@@ -1504,12 +1551,14 @@ impl GameClientBoundPacket {
         entity_id: i32,
         entity_uuid: Uuid,
         title: i32,
+        location: Position,
         direction: u8,
     ) -> Self {
         let spawn_entity_painting = SpawnEntityPainting {
             entity_id,
             entity_uuid,
             title,
+            location,
             direction,
         };
 
@@ -1524,6 +1573,7 @@ impl GameClientBoundPacket {
         z: f64,
         yaw: i8,
         pitch: i8,
+        metadata: Metadata,
     ) -> Self {
         let named_entity_spawn = NamedEntitySpawn {
             entity_id,
@@ -1533,6 +1583,7 @@ impl GameClientBoundPacket {
             z,
             yaw,
             pitch,
+            metadata,
         };
 
         Self::NamedEntitySpawn(named_entity_spawn)
@@ -1557,23 +1608,29 @@ impl GameClientBoundPacket {
         Self::Advancements(advancements)
     }
 
-    pub fn block_break_animation(entity_id: i32, destroy_stage: i8) -> Self {
+    pub fn block_break_animation(entity_id: i32, location: Position, destroy_stage: i8) -> Self {
         let block_break_animation = BlockBreakAnimation {
             entity_id,
+            location,
             destroy_stage,
         };
 
         Self::BlockBreakAnimation(block_break_animation)
     }
 
-    pub fn tile_entity_data(action: u8, nbt_data: CompoundTag) -> Self {
-        let tile_entity_data = TileEntityData { action, nbt_data };
+    pub fn tile_entity_data(location: Position, action: u8, nbt_data: CompoundTag) -> Self {
+        let tile_entity_data = TileEntityData {
+            location,
+            action,
+            nbt_data,
+        };
 
         Self::TileEntityData(tile_entity_data)
     }
 
-    pub fn block_action(byte1: u8, byte2: u8, block_id: i32) -> Self {
+    pub fn block_action(location: Position, byte1: u8, byte2: u8, block_id: i32) -> Self {
         let block_action = BlockAction {
+            location,
             byte1,
             byte2,
             block_id,
@@ -1582,8 +1639,8 @@ impl GameClientBoundPacket {
         Self::BlockAction(block_action)
     }
 
-    pub fn block_change(type_: i32) -> Self {
-        let block_change = BlockChange { type_ };
+    pub fn block_change(location: Position, type_: i32) -> Self {
+        let block_change = BlockChange { location, type_ };
 
         Self::BlockChange(block_change)
     }
@@ -1697,8 +1754,12 @@ impl GameClientBoundPacket {
         Self::CraftProgressBar(craft_progress_bar)
     }
 
-    pub fn set_slot(window_id: i8, slot: i16) -> Self {
-        let set_slot = SetSlot { window_id, slot };
+    pub fn set_slot(window_id: i8, slot: i16, item: Option<Slot>) -> Self {
+        let set_slot = SetSlot {
+            window_id,
+            slot,
+            item,
+        };
 
         Self::SetSlot(set_slot)
     }
@@ -1825,9 +1886,10 @@ impl GameClientBoundPacket {
         Self::MapChunk(map_chunk)
     }
 
-    pub fn world_event(effect_id: i32, data: i32, global: bool) -> Self {
+    pub fn world_event(effect_id: i32, location: Position, data: i32, global: bool) -> Self {
         let world_event = WorldEvent {
             effect_id,
+            location,
             data,
             global,
         };
@@ -1885,7 +1947,7 @@ impl GameClientBoundPacket {
         Self::UpdateLight(update_light)
     }
 
-    pub fn login(
+    pub fn join_game(
         entity_id: i32,
         game_mode: u8,
         dimension: i32,
@@ -1894,7 +1956,7 @@ impl GameClientBoundPacket {
         view_distance: i32,
         reduced_debug_info: bool,
     ) -> Self {
-        let login = Login {
+        let join_game = JoinGame {
             entity_id,
             game_mode,
             dimension,
@@ -1904,7 +1966,7 @@ impl GameClientBoundPacket {
             reduced_debug_info,
         };
 
-        Self::Login(login)
+        Self::JoinGame(join_game)
     }
 
     pub fn map(
@@ -2012,8 +2074,10 @@ impl GameClientBoundPacket {
         Self::OpenBook(open_book)
     }
 
-    pub fn open_sign_entity() -> Self {
-        Self::OpenSignEntity
+    pub fn open_sign_entity(location: Position) -> Self {
+        let open_sign_entity = OpenSignEntity { location };
+
+        Self::OpenSignEntity(open_sign_entity)
     }
 
     pub fn craft_recipe_response(window_id: i8, recipe: String) -> Self {
@@ -2158,8 +2222,11 @@ impl GameClientBoundPacket {
         Self::ScoreboardDisplayObjective(scoreboard_display_objective)
     }
 
-    pub fn entity_metadata(entity_id: i32) -> Self {
-        let entity_metadata = EntityMetadata { entity_id };
+    pub fn entity_metadata(entity_id: i32, metadata: Metadata) -> Self {
+        let entity_metadata = EntityMetadata {
+            entity_id,
+            metadata,
+        };
 
         Self::EntityMetadata(entity_metadata)
     }
@@ -2189,8 +2256,12 @@ impl GameClientBoundPacket {
         Self::EntityVelocity(entity_velocity)
     }
 
-    pub fn entity_equipment(entity_id: i32, slot: i32) -> Self {
-        let entity_equipment = EntityEquipment { entity_id, slot };
+    pub fn entity_equipment(entity_id: i32, slot: i32, item: Option<Slot>) -> Self {
+        let entity_equipment = EntityEquipment {
+            entity_id,
+            slot,
+            item,
+        };
 
         Self::EntityEquipment(entity_equipment)
     }
@@ -2243,8 +2314,10 @@ impl GameClientBoundPacket {
         Self::ScoreboardScore(scoreboard_score)
     }
 
-    pub fn spawn_position() -> Self {
-        Self::SpawnPosition
+    pub fn spawn_position(location: Position) -> Self {
+        let spawn_position = SpawnPosition { location };
+
+        Self::SpawnPosition(spawn_position)
     }
 
     pub fn update_time(age: i64, time: i64) -> Self {
@@ -2381,12 +2454,30 @@ impl GameClientBoundPacket {
         Self::DeclareRecipes
     }
 
-    pub fn tags() -> Self {
-        Self::Tags
+    pub fn tags(
+        block_tags: TagsMap,
+        item_tags: TagsMap,
+        fluid_tags: TagsMap,
+        entity_tags: TagsMap,
+    ) -> Self {
+        let tags = Tags {
+            block_tags,
+            item_tags,
+            fluid_tags,
+            entity_tags,
+        };
+
+        Self::Tags(tags)
     }
 
-    pub fn acknowledge_player_digging(block: i32, status: i32, successful: bool) -> Self {
+    pub fn acknowledge_player_digging(
+        location: Position,
+        block: i32,
+        status: i32,
+        successful: bool,
+    ) -> Self {
         let acknowledge_player_digging = AcknowledgePlayerDigging {
+            location,
             block,
             status,
             successful,
@@ -2406,6 +2497,7 @@ pub struct TeleportConfirm {
 pub struct QueryBlockNbt {
     #[packet(with = "var_int")]
     pub transaction_id: i32,
+    pub location: Position,
 }
 
 #[derive(Packet, Debug)]
@@ -2415,6 +2507,7 @@ pub struct SetDifficulty {
 
 #[derive(Packet, Debug)]
 pub struct EditBook {
+    pub new_book: Option<Slot>,
     pub signing: bool,
     #[packet(with = "var_int")]
     pub hand: i32,
@@ -2455,6 +2548,7 @@ pub struct SetBeaconEffect {
 
 #[derive(Packet, Debug)]
 pub struct UpdateCommandBlock {
+    pub location: Position,
     pub command: String,
     #[packet(with = "var_int")]
     pub mode: i32,
@@ -2471,6 +2565,7 @@ pub struct UpdateCommandBlockMinecart {
 
 #[derive(Packet, Debug)]
 pub struct UpdateStructureBlock {
+    pub location: Position,
     #[packet(with = "var_int")]
     pub action: i32,
     #[packet(with = "var_int")]
@@ -2543,6 +2638,7 @@ pub struct WindowClick {
     pub mouse_button: i8,
     pub action: i16,
     pub mode: i8,
+    pub item: Option<Slot>,
 }
 
 #[derive(Packet, Debug)]
@@ -2637,6 +2733,7 @@ pub struct ServerBoundAbilities {
 #[derive(Packet, Debug)]
 pub struct BlockDig {
     pub status: i8,
+    pub location: Position,
     pub face: i8,
 }
 
@@ -2677,10 +2774,12 @@ pub struct ServerBoundHeldItemSlot {
 #[derive(Packet, Debug)]
 pub struct SetCreativeSlot {
     pub slot: i16,
+    pub item: Option<Slot>,
 }
 
 #[derive(Packet, Debug)]
 pub struct UpdateJigsawBlock {
+    pub location: Position,
     pub attachment_type: String,
     pub target_pool: String,
     pub final_state: String,
@@ -2688,6 +2787,7 @@ pub struct UpdateJigsawBlock {
 
 #[derive(Packet, Debug)]
 pub struct UpdateSign {
+    pub location: Position,
     pub text1: String,
     pub text2: String,
     pub text3: String,
@@ -2709,6 +2809,7 @@ pub struct Spectate {
 pub struct BlockPlace {
     #[packet(with = "var_int")]
     pub hand: i32,
+    pub location: Position,
     #[packet(with = "var_int")]
     pub direction: i32,
     pub cursor_x: f32,
@@ -2783,6 +2884,7 @@ pub struct SpawnEntityLiving {
     pub velocity_x: i16,
     pub velocity_y: i16,
     pub velocity_z: i16,
+    pub metadata: Metadata,
 }
 
 #[derive(Packet, Debug)]
@@ -2792,6 +2894,7 @@ pub struct SpawnEntityPainting {
     pub entity_uuid: Uuid,
     #[packet(with = "var_int")]
     pub title: i32,
+    pub location: Position,
     pub direction: u8,
 }
 
@@ -2805,6 +2908,7 @@ pub struct NamedEntitySpawn {
     pub z: f64,
     pub yaw: i8,
     pub pitch: i8,
+    pub metadata: Metadata,
 }
 
 #[derive(Packet, Debug)]
@@ -2823,17 +2927,20 @@ pub struct Advancements {
 pub struct BlockBreakAnimation {
     #[packet(with = "var_int")]
     pub entity_id: i32,
+    pub location: Position,
     pub destroy_stage: i8,
 }
 
 #[derive(Packet, Debug)]
 pub struct TileEntityData {
+    pub location: Position,
     pub action: u8,
     pub nbt_data: CompoundTag,
 }
 
 #[derive(Packet, Debug)]
 pub struct BlockAction {
+    pub location: Position,
     pub byte1: u8,
     pub byte2: u8,
     #[packet(with = "var_int")]
@@ -2842,6 +2949,7 @@ pub struct BlockAction {
 
 #[derive(Packet, Debug)]
 pub struct BlockChange {
+    pub location: Position,
     #[packet(with = "var_int")]
     pub type_: i32,
 }
@@ -2941,6 +3049,7 @@ pub struct CraftProgressBar {
 pub struct SetSlot {
     pub window_id: i8,
     pub slot: i16,
+    pub item: Option<Slot>,
 }
 
 #[derive(Packet, Debug)]
@@ -3031,6 +3140,7 @@ pub struct MapChunk {
 #[derive(Packet, Debug)]
 pub struct WorldEvent {
     pub effect_id: i32,
+    pub location: Position,
     pub data: i32,
     pub global: bool,
 }
@@ -3068,7 +3178,7 @@ pub struct UpdateLight {
 }
 
 #[derive(Packet, Debug)]
-pub struct Login {
+pub struct JoinGame {
     pub entity_id: i32,
     pub game_mode: u8,
     pub dimension: i32,
@@ -3151,6 +3261,11 @@ pub struct ClientBoundVehicleMove {
 pub struct OpenBook {
     #[packet(with = "var_int")]
     pub hand: i32,
+}
+
+#[derive(Packet, Debug)]
+pub struct OpenSignEntity {
+    pub location: Position,
 }
 
 #[derive(Packet, Debug)]
@@ -3268,6 +3383,7 @@ pub struct ScoreboardDisplayObjective {
 pub struct EntityMetadata {
     #[packet(with = "var_int")]
     pub entity_id: i32,
+    pub metadata: Metadata,
 }
 
 #[derive(Packet, Debug)]
@@ -3291,6 +3407,7 @@ pub struct EntityEquipment {
     pub entity_id: i32,
     #[packet(with = "var_int")]
     pub slot: i32,
+    pub item: Option<Slot>,
 }
 
 #[derive(Packet, Debug)]
@@ -3333,6 +3450,11 @@ pub struct ScoreboardScore {
     pub item_name: String,
     pub action: i8,
     pub score_name: String,
+}
+
+#[derive(Packet, Debug)]
+pub struct SpawnPosition {
+    pub location: Position,
 }
 
 #[derive(Packet, Debug)]
@@ -3428,7 +3550,16 @@ pub struct SelectAdvancementTab {
 }
 
 #[derive(Packet, Debug)]
+pub struct Tags {
+    pub block_tags: TagsMap,
+    pub item_tags: TagsMap,
+    pub fluid_tags: TagsMap,
+    pub entity_tags: TagsMap,
+}
+
+#[derive(Packet, Debug)]
 pub struct AcknowledgePlayerDigging {
+    pub location: Position,
     #[packet(with = "var_int")]
     pub block: i32,
     #[packet(with = "var_int")]

@@ -153,16 +153,24 @@ fn transform_protocol_data(
             if let Data::Container(container_vec) = data {
                 for container in container_vec {
                     match container {
-                        Container::Value { name, data } => {
-                            if let Some(field) = transform_field(name, data) {
-                                fields.push(modify_field(&packet_name, field));
-                            }
-                        }
+                        Container::Value { name, data } => match transform_field(name, data) {
+                            Some(field) => fields.push(modify_field(&packet_name, field)),
+                            None => println!(
+                                "[{}] Field \"{}\" are skipped ({:?}",
+                                packet_name, name, data
+                            ),
+                        },
                         Container::List { name, data_vec } => {
                             if let Some(name) = name {
                                 for data in data_vec {
-                                    if let Some(field) = transform_field(name, data) {
-                                        fields.push(modify_field(&packet_name, field));
+                                    match transform_field(name, data) {
+                                        Some(field) => {
+                                            fields.push(modify_field(&packet_name, field))
+                                        }
+                                        None => println!(
+                                            "[{}] Field \"{}\" are skipped ({:?})",
+                                            packet_name, name, data_vec
+                                        ),
                                     }
                                 }
                             }
@@ -216,7 +224,7 @@ fn get_packet_ids(protocol_data: &ProtocolData) -> HashMap<String, u8> {
 
 fn transform_field(unformatted_field_name: &str, data: &Data) -> Option<output::Field> {
     match data {
-        Data::Type(str_type) => match transform_data_type(str_type) {
+        Data::Type(name) => match transform_data_type(name) {
             Some(data_type) => Some(output::Field {
                 name: format_field_name(unformatted_field_name),
                 data_type,
@@ -224,14 +232,6 @@ fn transform_field(unformatted_field_name: &str, data: &Data) -> Option<output::
             None => None,
         },
         _ => None,
-    }
-}
-
-fn format_field_name(unformatted_field_name: &str) -> String {
-    if unformatted_field_name == "type" {
-        String::from("type_")
-    } else {
-        unformatted_field_name.to_snake_case()
     }
 }
 
@@ -253,10 +253,31 @@ fn transform_data_type(name: &str) -> Option<output::DataType> {
         "UUID" => Some(output::DataType::Uuid { hyphenated: false }),
         "buffer" => Some(output::DataType::ByteArray { rest: false }),
         "restBuffer" => Some(output::DataType::ByteArray { rest: true }),
+        "position" => Some(output::DataType::RefType {
+            ref_name: "Position".to_string(),
+        }),
+        "slot" => Some(output::DataType::RefType {
+            ref_name: "Option<Slot>".to_string(),
+        }),
+        "entityMetadata" => Some(output::DataType::RefType {
+            ref_name: "Metadata".to_string(),
+        }),
+        "tags" => Some(output::DataType::RefType {
+            ref_name: "TagsMap".to_string(),
+        }),
+        "option" => None,
         _ => {
             println!("Unknown data type \"{}\"", name);
             None
         }
+    }
+}
+
+fn format_field_name(unformatted_field_name: &str) -> String {
+    if unformatted_field_name == "type" {
+        String::from("type_")
+    } else {
+        unformatted_field_name.to_snake_case()
     }
 }
 
@@ -273,6 +294,7 @@ fn rename_packet(
         ("Ping", output::Bound::Server) => "PingRequest",
         ("ServerInfo", output::Bound::Client) => "StatusResponse",
         ("Ping", output::Bound::Client) => "PingResponse",
+        ("Login", output::Bound::Client) => "JoinGame",
         _ => name,
     }
     .to_owned();
