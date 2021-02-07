@@ -1,7 +1,5 @@
 use linked_hash_map::LinkedHashMap;
 use serde::Deserialize;
-use serde::Serialize;
-use std::collections::HashMap;
 
 #[derive(Debug, Deserialize)]
 pub struct Protocol {
@@ -24,7 +22,7 @@ pub struct ProtocolData {
     pub types: LinkedHashMap<String, Vec<Data>>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, PartialEq, Eq)]
 #[serde(untagged)]
 pub enum Data {
     Type(String),
@@ -39,7 +37,7 @@ pub enum Data {
     Bitfield(Vec<BitField>),
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, PartialEq, Eq)]
 #[serde(untagged)]
 pub enum Container {
     Value {
@@ -50,11 +48,11 @@ pub enum Container {
     List {
         name: Option<String>,
         #[serde(rename = "type")]
-        data: Vec<Data>,
+        data_vec: Vec<Data>,
     },
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, PartialEq, Eq)]
 #[serde(untagged)]
 pub enum Switch {
     Empty {
@@ -73,7 +71,7 @@ pub enum Switch {
     },
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, PartialEq, Eq)]
 #[serde(untagged)]
 pub enum List {
     Empty {
@@ -94,7 +92,7 @@ pub enum List {
     },
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, PartialEq, Eq)]
 pub struct BitField {
     name: String,
     size: usize,

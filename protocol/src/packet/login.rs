@@ -1,31 +1,21 @@
-use crate::data::chat::Message;
 use crate::DecodeError;
 use crate::Decoder;
 use std::io::Read;
-use uuid::Uuid;
-
 use minecraft_protocol_derive::Packet;
+
 
 pub enum LoginServerBoundPacket {
     LoginStart(LoginStart),
     EncryptionResponse(EncryptionResponse),
-    LoginPluginResponse(LoginPluginResponse),
-}
-
-pub enum LoginClientBoundPacket {
-    LoginDisconnect(LoginDisconnect),
-    EncryptionRequest(EncryptionRequest),
-    LoginSuccess(LoginSuccess),
-    SetCompression(SetCompression),
-    LoginPluginRequest(LoginPluginRequest),
+    LoginPluginResponse(LoginPluginResponse)
 }
 
 impl LoginServerBoundPacket {
     pub fn get_type_id(&self) -> u8 {
         match self {
-            LoginServerBoundPacket::LoginStart(_) => 0x00,
-            LoginServerBoundPacket::EncryptionResponse(_) => 0x01,
-            LoginServerBoundPacket::LoginPluginResponse(_) => 0x02,
+            Self::LoginStart(_) => 0x00,
+            Self::EncryptionResponse(_) => 0x01,
+            Self::LoginPluginResponse(_) => 0x02
         }
     }
 
@@ -34,119 +24,185 @@ impl LoginServerBoundPacket {
             0x00 => {
                 let login_start = LoginStart::decode(reader)?;
 
-                Ok(LoginServerBoundPacket::LoginStart(login_start))
+                Ok(Self::LoginStart(login_start))
             }
             0x01 => {
                 let encryption_response = EncryptionResponse::decode(reader)?;
 
-                Ok(LoginServerBoundPacket::EncryptionResponse(
-                    encryption_response,
-                ))
+                Ok(Self::EncryptionResponse(encryption_response))
             }
             0x02 => {
                 let login_plugin_response = LoginPluginResponse::decode(reader)?;
 
-                Ok(LoginServerBoundPacket::LoginPluginResponse(
-                    login_plugin_response,
-                ))
+                Ok(Self::LoginPluginResponse(login_plugin_response))
             }
-            _ => Err(DecodeError::UnknownPacketType { type_id }),
+            _ => Err(DecodeError::UnknownPacketType { type_id })
         }
     }
+
+    pub fn login_start(username: String) -> Self {
+        let login_start = LoginStart {
+            username
+        };
+
+        Self::LoginStart(login_start)
+    }
+
+    pub fn encryption_response(shared_secret: Vec<u8>, verify_token: Vec<u8>) -> Self {
+        let encryption_response = EncryptionResponse {
+            shared_secret,
+            verify_token
+        };
+
+        Self::EncryptionResponse(encryption_response)
+    }
+
+    pub fn login_plugin_response(message_id: i32, data: Vec<u8>) -> Self {
+        let login_plugin_response = LoginPluginResponse {
+            message_id,
+            data
+        };
+
+        Self::LoginPluginResponse(login_plugin_response)
+    }
+}
+pub enum LoginClientBoundPacket {
+    Disconnect(Disconnect),
+    EncryptionRequest(EncryptionRequest),
+    Success(Success),
+    Compress(Compress),
+    LoginPluginRequest(LoginPluginRequest)
 }
 
 impl LoginClientBoundPacket {
     pub fn get_type_id(&self) -> u8 {
         match self {
-            LoginClientBoundPacket::LoginDisconnect(_) => 0x00,
-            LoginClientBoundPacket::EncryptionRequest(_) => 0x01,
-            LoginClientBoundPacket::LoginSuccess(_) => 0x02,
-            LoginClientBoundPacket::SetCompression(_) => 0x03,
-            LoginClientBoundPacket::LoginPluginRequest(_) => 0x04,
+            Self::Disconnect(_) => 0x00,
+            Self::EncryptionRequest(_) => 0x01,
+            Self::Success(_) => 0x02,
+            Self::Compress(_) => 0x03,
+            Self::LoginPluginRequest(_) => 0x04
         }
     }
 
     pub fn decode<R: Read>(type_id: u8, reader: &mut R) -> Result<Self, DecodeError> {
         match type_id {
             0x00 => {
-                let login_disconnect = LoginDisconnect::decode(reader)?;
+                let disconnect = Disconnect::decode(reader)?;
 
-                Ok(LoginClientBoundPacket::LoginDisconnect(login_disconnect))
+                Ok(Self::Disconnect(disconnect))
             }
             0x01 => {
                 let encryption_request = EncryptionRequest::decode(reader)?;
 
-                Ok(LoginClientBoundPacket::EncryptionRequest(
-                    encryption_request,
-                ))
+                Ok(Self::EncryptionRequest(encryption_request))
             }
             0x02 => {
-                let login_success = LoginSuccess::decode(reader)?;
+                let success = Success::decode(reader)?;
 
-                Ok(LoginClientBoundPacket::LoginSuccess(login_success))
+                Ok(Self::Success(success))
             }
             0x03 => {
-                let set_compression = SetCompression::decode(reader)?;
+                let compress = Compress::decode(reader)?;
 
-                Ok(LoginClientBoundPacket::SetCompression(set_compression))
+                Ok(Self::Compress(compress))
             }
             0x04 => {
                 let login_plugin_request = LoginPluginRequest::decode(reader)?;
 
-                Ok(LoginClientBoundPacket::LoginPluginRequest(
-                    login_plugin_request,
-                ))
+                Ok(Self::LoginPluginRequest(login_plugin_request))
             }
-            _ => Err(DecodeError::UnknownPacketType { type_id }),
+            _ => Err(DecodeError::UnknownPacketType { type_id })
         }
     }
-}
 
+    pub fn disconnect(reason: String) -> Self {
+        let disconnect = Disconnect {
+            reason
+        };
+
+        Self::Disconnect(disconnect)
+    }
+
+    pub fn encryption_request(server_id: String, public_key: Vec<u8>, verify_token: Vec<u8>) -> Self {
+        let encryption_request = EncryptionRequest {
+            server_id,
+            public_key,
+            verify_token
+        };
+
+        Self::EncryptionRequest(encryption_request)
+    }
+
+    pub fn success(uuid: String, username: String) -> Self {
+        let success = Success {
+            uuid,
+            username
+        };
+
+        Self::Success(success)
+    }
+
+    pub fn compress(threshold: i32) -> Self {
+        let compress = Compress {
+            threshold
+        };
+
+        Self::Compress(compress)
+    }
+
+    pub fn login_plugin_request(message_id: i32, channel: String, data: Vec<u8>) -> Self {
+        let login_plugin_request = LoginPluginRequest {
+            message_id,
+            channel,
+            data
+        };
+
+        Self::LoginPluginRequest(login_plugin_request)
+    }
+}
 #[derive(Packet, Debug)]
 pub struct LoginStart {
-    pub name: String,
+    pub username: String
 }
 
 #[derive(Packet, Debug)]
 pub struct EncryptionResponse {
     pub shared_secret: Vec<u8>,
-    pub verify_token: Vec<u8>,
+    pub verify_token: Vec<u8>
 }
 
 #[derive(Packet, Debug)]
 pub struct LoginPluginResponse {
     #[packet(with = "var_int")]
     pub message_id: i32,
-    pub successful: bool,
     #[packet(with = "rest")]
-    pub data: Vec<u8>,
+    pub data: Vec<u8>
 }
 
+
 #[derive(Packet, Debug)]
-pub struct LoginDisconnect {
-    pub reason: Message,
+pub struct Disconnect {
+    pub reason: String
 }
 
 #[derive(Packet, Debug)]
 pub struct EncryptionRequest {
-    #[packet(max_length = 20)]
     pub server_id: String,
     pub public_key: Vec<u8>,
-    pub verify_token: Vec<u8>,
+    pub verify_token: Vec<u8>
 }
 
 #[derive(Packet, Debug)]
-pub struct LoginSuccess {
-    #[packet(with = "uuid_hyp_str")]
-    pub uuid: Uuid,
-    #[packet(max_length = 16)]
-    pub username: String,
+pub struct Success {
+    pub uuid: String,
+    pub username: String
 }
 
 #[derive(Packet, Debug)]
-pub struct SetCompression {
+pub struct Compress {
     #[packet(with = "var_int")]
-    pub threshold: i32,
+    pub threshold: i32
 }
 
 #[derive(Packet, Debug)]
@@ -155,5 +211,6 @@ pub struct LoginPluginRequest {
     pub message_id: i32,
     pub channel: String,
     #[packet(with = "rest")]
-    pub data: Vec<u8>,
+    pub data: Vec<u8>
 }
+
