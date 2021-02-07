@@ -3,6 +3,7 @@ use std::collections::HashSet;
 use std::fmt;
 use std::fmt::Display;
 
+#[derive(Debug)]
 pub enum State {
     Handshake,
     Status,
@@ -13,10 +14,10 @@ pub enum State {
 impl State {
     pub fn data_import(&self) -> &str {
         match self {
-            State::Handshake => "crate::packet::handshake",
-            State::Status => "crate::packet::status",
-            State::Login => "crate::packet::login",
-            State::Game => "crate::packet::game",
+            State::Handshake => "crate::data::handshake::*",
+            State::Status => "crate::data::status::*",
+            State::Login => "crate::data::login::*",
+            State::Game => "crate::data::game::*",
         }
     }
 }
@@ -50,7 +51,7 @@ impl Display for Bound {
     }
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, Debug)]
 pub struct Packet {
     pub id: u8,
     pub name: String,
@@ -67,7 +68,7 @@ impl Packet {
     }
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, Debug)]
 pub struct Field {
     pub name: String,
     #[serde(flatten)]
@@ -81,9 +82,13 @@ impl Field {
             data_type,
         }
     }
+
+    pub fn change_type(&self, data_type: DataType) -> Field {
+        Field::new(&self.name, data_type)
+    }
 }
 
-#[derive(Serialize, Eq, PartialEq)]
+#[derive(Serialize, Eq, PartialEq, Debug)]
 #[serde(tag = "type")]
 pub enum DataType {
     #[serde(rename(serialize = "bool"))]
@@ -137,6 +142,7 @@ impl DataType {
     }
 }
 
+#[derive(Debug)]
 pub struct Protocol {
     pub state: State,
     pub server_bound_packets: Vec<Packet>,

@@ -6,6 +6,7 @@ use heck::{CamelCase, SnakeCase};
 
 use crate::data::input::{Container, Data, ProtocolData, ProtocolState};
 use crate::data::output;
+use crate::data::output::Field;
 use serde::Serialize;
 use serde_json::json;
 use std::collections::HashMap;
@@ -132,7 +133,7 @@ fn transform_protocol_data(
         let id = *packet_ids
             .get(no_prefix_name)
             .expect("Failed to get packet id");
-        let name = rename_packet(&no_prefix_name.to_camel_case(), &bound);
+        let packet_name = rename_packet(&no_prefix_name.to_camel_case(), &bound);
 
         let mut fields = vec![];
 
@@ -142,14 +143,14 @@ fn transform_protocol_data(
                     match container {
                         Container::Value { name, data } => {
                             if let Some(field) = transform_field(name, data) {
-                                fields.push(field);
+                                fields.push(modify_field(&packet_name, field));
                             }
                         }
                         Container::List { name, data_vec } => {
                             if let Some(name) = name {
                                 for data in data_vec {
                                     if let Some(field) = transform_field(name, data) {
-                                        fields.push(field);
+                                        fields.push(modify_field(&packet_name, field));
                                     }
                                 }
                             }
@@ -159,7 +160,11 @@ fn transform_protocol_data(
             }
         }
 
-        let packet = output::Packet { id, name, fields };
+        let packet = output::Packet {
+            id,
+            name: packet_name,
+            fields,
+        };
 
         packets.push(packet);
     }
@@ -218,8 +223,8 @@ fn format_field_name(unformatted_field_name: &str) -> String {
     }
 }
 
-fn transform_data_type(str_type: &str) -> Option<output::DataType> {
-    match str_type {
+fn transform_data_type(name: &str) -> Option<output::DataType> {
+    match name {
         "bool" => Some(output::DataType::Boolean),
         "i8" => Some(output::DataType::Byte),
         "i16" => Some(output::DataType::Short),
@@ -237,9 +242,18 @@ fn transform_data_type(str_type: &str) -> Option<output::DataType> {
         "buffer" => Some(output::DataType::ByteArray { rest: false }),
         "restBuffer" => Some(output::DataType::ByteArray { rest: true }),
         _ => {
-            println!("{}", str_type);
+            println!("Unknown data type \"{}\"", name);
             None
         }
+    }
+}
+
+fn modify_field(packet_name: &str, field: output::Field) -> output::Field {
+    match (packet_name, field.name.as_str()) {
+        ("StatusResponse", "response") => field.change_type(output::DataType::RefType {
+            ref_name: "ServerStatus".to_owned(),
+        }),
+        _ => field,
     }
 }
 

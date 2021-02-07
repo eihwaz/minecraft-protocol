@@ -32,7 +32,7 @@ impl {{packet_enum_name}} {
         }
     }
 {{#each packets as |p|}}
-    pub fn {{snake_case p.name}}({{~#each p.fields as |f|}}{{f.name}}: {{f.type}}{{#unless @last}}, {{/unless}}{{~/each}}) -> Self {
+    pub fn {{snake_case p.name}}({{~#each p.fields as |f|}}{{f.name}}: {{#if (ne f.type "RefType")}}{{f.type}}{{~else}}{{f.ref_name}}{{/if}}{{#unless @last}}, {{/unless}}{{~/each}}) -> Self {
     {{~#if p.fields}}
         let {{snake_case p.name}} = {{p.name}} {
         {{~#each p.fields as |f|}}
