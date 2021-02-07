@@ -50,8 +50,8 @@ pub fn main() {
             output::State::Login,
         ),
         // (
-        //     transform_protocol_state(State::Game, &protocol_input.game),
-        //     State::Game,
+        //     transform_protocol_state(output::State::Game, &protocol_input.game),
+        //     output::State::Game,
         // ),
     ];
 
@@ -216,7 +216,7 @@ fn transform_field(unformatted_field_name: &str, data: &Data) -> Option<output::
 }
 
 fn format_field_name(unformatted_field_name: &str) -> String {
-    if unformatted_field_name == "Type" {
+    if unformatted_field_name == "type" {
         String::from("type_")
     } else {
         unformatted_field_name.to_snake_case()
@@ -248,15 +248,6 @@ fn transform_data_type(name: &str) -> Option<output::DataType> {
     }
 }
 
-fn modify_field(packet_name: &str, field: output::Field) -> output::Field {
-    match (packet_name, field.name.as_str()) {
-        ("StatusResponse", "response") => field.change_type(output::DataType::RefType {
-            ref_name: "ServerStatus".to_owned(),
-        }),
-        _ => field,
-    }
-}
-
 fn rename_packet(name: &str, bound: &output::Bound) -> String {
     match (name, bound) {
         ("EncryptionBegin", output::Bound::Server) => "EncryptionResponse",
@@ -268,6 +259,17 @@ fn rename_packet(name: &str, bound: &output::Bound) -> String {
         _ => name,
     }
     .to_owned()
+}
+
+fn modify_field(packet_name: &str, field: output::Field) -> output::Field {
+    match (packet_name, field.name.as_str()) {
+        ("StatusResponse", "response") => field.change_type(output::DataType::RefType {
+            ref_name: "ServerStatus".to_owned(),
+        }),
+        ("Success", "uuid") => field.change_type(output::DataType::Uuid { hyphenated: true }),
+        ("Disconnect", "reason") => field.change_type(output::DataType::Chat),
+        _ => field,
+    }
 }
 
 #[derive(Serialize)]
