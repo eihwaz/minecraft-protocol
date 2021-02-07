@@ -225,6 +225,20 @@ impl<R: Read> DecoderReadExt for R {
     read_signed_var_int!(i64, read_var_i64, 10);
 }
 
+impl Encoder for i8 {
+    fn encode<W: Write>(&self, writer: &mut W) -> Result<(), EncodeError> {
+        Ok(writer.write_i8(*self)?)
+    }
+}
+
+impl Decoder for i8 {
+    type Output = Self;
+
+    fn decode<R: Read>(reader: &mut R) -> Result<Self::Output, DecodeError> {
+        Ok(reader.read_i8()?)
+    }
+}
+
 impl Encoder for u8 {
     fn encode<W: Write>(&self, writer: &mut W) -> Result<(), EncodeError> {
         Ok(writer.write_u8(*self)?)
@@ -236,6 +250,20 @@ impl Decoder for u8 {
 
     fn decode<R: Read>(reader: &mut R) -> Result<Self::Output, DecodeError> {
         Ok(reader.read_u8()?)
+    }
+}
+
+impl Encoder for i16 {
+    fn encode<W: Write>(&self, writer: &mut W) -> Result<(), EncodeError> {
+        Ok(writer.write_i16::<BigEndian>(*self)?)
+    }
+}
+
+impl Decoder for i16 {
+    type Output = Self;
+
+    fn decode<R: Read>(reader: &mut R) -> Result<Self::Output, DecodeError> {
+        Ok(reader.read_i16::<BigEndian>()?)
     }
 }
 
@@ -334,6 +362,34 @@ impl Decoder for bool {
 
     fn decode<R: Read>(reader: &mut R) -> Result<Self::Output, DecodeError> {
         Ok(reader.read_bool()?)
+    }
+}
+
+impl Encoder for f32 {
+    fn encode<W: Write>(&self, writer: &mut W) -> Result<(), EncodeError> {
+        Ok(writer.write_f32::<BigEndian>(*self)?)
+    }
+}
+
+impl Decoder for f32 {
+    type Output = Self;
+
+    fn decode<R: Read>(reader: &mut R) -> Result<Self::Output, DecodeError> {
+        Ok(reader.read_f32::<BigEndian>()?)
+    }
+}
+
+impl Encoder for f64 {
+    fn encode<W: Write>(&self, writer: &mut W) -> Result<(), EncodeError> {
+        Ok(writer.write_f64::<BigEndian>(*self)?)
+    }
+}
+
+impl Decoder for f64 {
+    type Output = Self;
+
+    fn decode<R: Read>(reader: &mut R) -> Result<Self::Output, DecodeError> {
+        Ok(reader.read_f64::<BigEndian>()?)
     }
 }
 

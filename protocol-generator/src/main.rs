@@ -307,8 +307,8 @@ fn modify_field(packet_name: &str, field: output::Field) -> output::Field {
         }),
         ("Success", "uuid") => field.change_type(output::DataType::Uuid { hyphenated: true }),
         ("Disconnect", "reason") => field.change_type(output::DataType::Chat),
-        ("ClientBoundChatMessage", "message") => field.change_type(output::DataType::Chat),
-        ("ClientBoundChatMessage", "position") => field.change_type(output::DataType::RefType {
+        ("ClientBoundChat", "message") => field.change_type(output::DataType::Chat),
+        ("ClientBoundChat", "position") => field.change_type(output::DataType::RefType {
             ref_name: "MessagePosition".to_owned(),
         }),
         _ => field,
