@@ -3,7 +3,7 @@ use std::collections::HashSet;
 use std::fmt;
 use std::fmt::Display;
 
-#[derive(Debug)]
+#[derive(Debug, Copy, Clone)]
 pub enum State {
     Handshake,
     Status,
