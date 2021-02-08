@@ -1,17 +1,18 @@
-mod data;
-
-use crate::data::input;
-use handlebars::*;
-use heck::{CamelCase, SnakeCase};
-
-use crate::data::input::{Container, Data, ProtocolData, ProtocolState};
-use crate::data::output;
-use serde::Serialize;
-use serde_json::json;
-use std::collections::HashMap;
 use std::fs::File;
 use std::io::Write;
+
+use crate::mappings::CodeMappings;
+use crate::transformer::transform_protocol;
+use handlebars::*;
+use heck::SnakeCase;
+use serde::Serialize;
+use serde_json::json;
 use structopt::StructOpt;
+
+pub mod backend;
+pub mod frontend;
+pub mod mappings;
+pub mod transformer;
 
 #[derive(StructOpt)]
 #[structopt(name = "protocol-generator")]
@@ -32,25 +33,31 @@ pub fn main() {
     let protocol_data_file =
         File::open(protocol_data_file_name).expect("Failed to open protocol data file");
 
-    let protocol_input: input::Protocol =
+    let protocol_input: backend::ProtocolHandler =
         serde_json::from_reader(protocol_data_file).expect("Failed to parse protocol data");
+
+    let mappings = CodeMappings {};
 
     let protocols = vec![
         (
-            transform_protocol_state(output::State::Handshake, &protocol_input.handshaking),
-            output::State::Handshake,
+            transform_protocol(
+                &mappings,
+                frontend::State::Handshake,
+                &protocol_input.handshaking,
+            ),
+            frontend::State::Handshake,
         ),
         (
-            transform_protocol_state(output::State::Status, &protocol_input.status),
-            output::State::Status,
+            transform_protocol(&mappings, frontend::State::Status, &protocol_input.status),
+            frontend::State::Status,
         ),
         (
-            transform_protocol_state(output::State::Login, &protocol_input.login),
-            output::State::Login,
+            transform_protocol(&mappings, frontend::State::Login, &protocol_input.login),
+            frontend::State::Login,
         ),
         (
-            transform_protocol_state(output::State::Game, &protocol_input.game),
-            output::State::Game,
+            transform_protocol(&mappings, frontend::State::Game, &protocol_input.game),
+            frontend::State::Game,
         ),
     ];
 
@@ -97,264 +104,24 @@ fn create_template_engine() -> Handlebars<'static> {
     template_engine
 }
 
-fn transform_protocol_state(
-    state: output::State,
-    protocol_state: &ProtocolState,
-) -> output::Protocol {
-    let server_bound_packets = transform_protocol_data(
-        protocol_state,
-        &protocol_state.to_server,
-        output::Bound::Server,
-    );
-    let client_bound_packets = transform_protocol_data(
-        protocol_state,
-        &protocol_state.to_client,
-        output::Bound::Client,
-    );
-
-    output::Protocol {
-        state,
-        server_bound_packets,
-        client_bound_packets,
-    }
-}
-
-fn transform_protocol_data(
-    protocol_state: &ProtocolState,
-    protocol_data: &ProtocolData,
-    bound: output::Bound,
-) -> Vec<output::Packet> {
-    let packet_ids = get_packet_ids(protocol_data);
-    let mut packets = vec![];
-
-    for (unformatted_name, data_vec) in protocol_data.types.iter() {
-        if !unformatted_name.starts_with("packet_")
-            || unformatted_name == "packet_legacy_server_list_ping"
-        {
-            continue;
-        }
-
-        let no_prefix_unformatted = unformatted_name.trim_start_matches("packet_");
-
-        let id = *packet_ids
-            .get(no_prefix_unformatted)
-            .expect("Failed to get packet id");
-
-        let packet_name = rename_packet(
-            unformatted_name,
-            &no_prefix_unformatted.to_camel_case(),
-            &bound,
-            protocol_state,
-        );
-
-        let mut fields = vec![];
-
-        for data in data_vec {
-            if let Data::Container(container_vec) = data {
-                for container in container_vec {
-                    match container {
-                        Container::Value { name, data } => match transform_field(name, data) {
-                            Some(field) => fields.push(modify_field(&packet_name, field)),
-                            None => println!(
-                                "[{}] Field \"{}\" are skipped ({:?}",
-                                packet_name, name, data
-                            ),
-                        },
-                        Container::List { name, data_vec } => {
-                            if let Some(name) = name {
-                                for data in data_vec {
-                                    match transform_field(name, data) {
-                                        Some(field) => {
-                                            fields.push(modify_field(&packet_name, field))
-                                        }
-                                        None => println!(
-                                            "[{}] Field \"{}\" are skipped ({:?})",
-                                            packet_name, name, data_vec
-                                        ),
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        let packet = output::Packet {
-            id,
-            name: packet_name,
-            fields,
-        };
-
-        packets.push(packet);
-    }
-
-    packets
-}
-
-fn get_packet_ids(protocol_data: &ProtocolData) -> HashMap<String, u8> {
-    let reversed_packet_ids = protocol_data
-        .types
-        .get("packet")
-        .and_then(|d| d.get(1))
-        .and_then(|d| match d {
-            Data::Container(data) => data.get(0),
-            _ => None,
-        })
-        .and_then(|c| match c {
-            Container::List { data_vec, .. } => data_vec.get(1),
-            _ => None,
-        })
-        .and_then(|d| match d {
-            Data::Mapper { mappings, .. } => Some(mappings),
-            _ => None,
-        })
-        .expect("Failed to get packet ids");
-
-    reversed_packet_ids
-        .into_iter()
-        .map(|(k, v)| {
-            (
-                v.clone(),
-                u8::from_str_radix(k.trim_start_matches("0x"), 16).expect("Invalid packet id"),
-            )
-        })
-        .collect()
-}
-
-fn transform_field(unformatted_field_name: &str, data: &Data) -> Option<output::Field> {
-    match data {
-        Data::Type(name) => match transform_data_type(name) {
-            Some(data_type) => Some(output::Field {
-                name: format_field_name(unformatted_field_name),
-                data_type,
-            }),
-            None => None,
-        },
-        _ => None,
-    }
-}
-
-fn transform_data_type(name: &str) -> Option<output::DataType> {
-    match name {
-        "bool" => Some(output::DataType::Boolean),
-        "i8" => Some(output::DataType::Byte),
-        "i16" => Some(output::DataType::Short),
-        "i32" => Some(output::DataType::Int { var_int: false }),
-        "i64" => Some(output::DataType::Long { var_long: false }),
-        "u8" => Some(output::DataType::UnsignedByte),
-        "u16" => Some(output::DataType::UnsignedShort),
-        "f32" => Some(output::DataType::Float),
-        "f64" => Some(output::DataType::Double),
-        "varint" => Some(output::DataType::Int { var_int: true }),
-        "varlong" => Some(output::DataType::Long { var_long: true }),
-        "string" => Some(output::DataType::String { max_length: 0 }),
-        "nbt" | "optionalNbt" => Some(output::DataType::CompoundTag),
-        "UUID" => Some(output::DataType::Uuid { hyphenated: false }),
-        "buffer" => Some(output::DataType::ByteArray { rest: false }),
-        "restBuffer" => Some(output::DataType::ByteArray { rest: true }),
-        "position" => Some(output::DataType::RefType {
-            ref_name: "Position".to_string(),
-        }),
-        "slot" => Some(output::DataType::RefType {
-            ref_name: "Option<Slot>".to_string(),
-        }),
-        "entityMetadata" => Some(output::DataType::RefType {
-            ref_name: "Metadata".to_string(),
-        }),
-        "tags" => Some(output::DataType::RefType {
-            ref_name: "TagsMap".to_string(),
-        }),
-        "option" => None,
-        _ => {
-            println!("Unknown data type \"{}\"", name);
-            None
-        }
-    }
-}
-
-fn format_field_name(unformatted_field_name: &str) -> String {
-    if unformatted_field_name == "type" {
-        String::from("type_")
-    } else {
-        unformatted_field_name.to_snake_case()
-    }
-}
-
-fn rename_packet(
-    unformatted_name: &str,
-    name: &str,
-    bound: &output::Bound,
-    protocol_state: &ProtocolState,
-) -> String {
-    let new_name = match (name, bound) {
-        ("EncryptionBegin", output::Bound::Server) => "EncryptionResponse",
-        ("EncryptionBegin", output::Bound::Client) => "EncryptionRequest",
-        ("PingStart", output::Bound::Server) => "StatusRequest",
-        ("Ping", output::Bound::Server) => "PingRequest",
-        ("ServerInfo", output::Bound::Client) => "StatusResponse",
-        ("Ping", output::Bound::Client) => "PingResponse",
-        ("Login", output::Bound::Client) => "JoinGame",
-        _ => name,
-    }
-    .to_owned();
-
-    if new_name == name
-        && protocol_state
-            .to_client
-            .types
-            .contains_key(unformatted_name)
-        && protocol_state
-            .to_server
-            .types
-            .contains_key(unformatted_name)
-    {
-        bidirectional(&new_name, bound)
-    } else {
-        new_name.to_owned()
-    }
-}
-
-fn bidirectional(name: &str, bound: &output::Bound) -> String {
-    match bound {
-        output::Bound::Server => format!("ServerBound{}", name),
-        output::Bound::Client => format!("ClientBound{}", name),
-    }
-}
-
-fn modify_field(packet_name: &str, field: output::Field) -> output::Field {
-    match (packet_name, field.name.as_str()) {
-        ("StatusResponse", "response") => field.change_type(output::DataType::RefType {
-            ref_name: "ServerStatus".to_owned(),
-        }),
-        ("Success", "uuid") => field.change_type(output::DataType::Uuid { hyphenated: true }),
-        ("Disconnect", "reason") => field.change_type(output::DataType::Chat),
-        ("ClientBoundChat", "message") => field.change_type(output::DataType::Chat),
-        ("ClientBoundChat", "position") => field.change_type(output::DataType::RefType {
-            ref_name: "MessagePosition".to_owned(),
-        }),
-        _ => field,
-    }
-}
-
 #[derive(Serialize)]
 struct GenerateContext<'a> {
     packet_enum_name: String,
-    packets: &'a Vec<output::Packet>,
+    packets: &'a Vec<frontend::Packet>,
 }
 
 fn generate_rust_file<W: Write>(
-    protocol: &output::Protocol,
+    protocol: &frontend::Protocol,
     template_engine: &Handlebars,
     mut writer: W,
 ) -> Result<(), TemplateRenderError> {
     let server_bound_ctx = GenerateContext {
-        packet_enum_name: format!("{}{}BoundPacket", &protocol.state, output::Bound::Server),
+        packet_enum_name: format!("{}{}BoundPacket", &protocol.state, frontend::Bound::Server),
         packets: &protocol.server_bound_packets,
     };
 
     let client_bound_ctx = GenerateContext {
-        packet_enum_name: format!("{}{}BoundPacket", &protocol.state, output::Bound::Client),
+        packet_enum_name: format!("{}{}BoundPacket", &protocol.state, frontend::Bound::Client),
         packets: &protocol.client_bound_packets,
     };
 

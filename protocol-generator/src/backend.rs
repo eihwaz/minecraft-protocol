@@ -2,23 +2,23 @@ use linked_hash_map::LinkedHashMap;
 use serde::Deserialize;
 
 #[derive(Debug, Deserialize)]
-pub struct Protocol {
-    pub handshaking: ProtocolState,
-    pub status: ProtocolState,
-    pub login: ProtocolState,
+pub struct ProtocolHandler {
+    pub handshaking: Protocol,
+    pub status: Protocol,
+    pub login: Protocol,
     #[serde(rename = "play")]
-    pub game: ProtocolState,
+    pub game: Protocol,
 }
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct ProtocolState {
-    pub to_client: ProtocolData,
-    pub to_server: ProtocolData,
+pub struct Protocol {
+    pub to_client: Packets,
+    pub to_server: Packets,
 }
 
 #[derive(Debug, Deserialize)]
-pub struct ProtocolData {
+pub struct Packets {
     pub types: LinkedHashMap<String, Vec<Data>>,
 }
 
