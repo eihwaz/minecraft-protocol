@@ -1,7 +1,11 @@
+use crate::frontend;
+use handlebars::{Handlebars, TemplateRenderError};
 use serde::Serialize;
+use serde_json::json;
 use std::collections::HashSet;
 use std::fmt;
 use std::fmt::Display;
+use std::io::Write;
 
 #[derive(Debug, Copy, Clone)]
 pub enum State {
@@ -171,4 +175,49 @@ impl Protocol {
             .filter_map(|f| f.data_type.import(&self.state))
             .collect()
     }
+}
+
+#[derive(Serialize)]
+struct GenerateContext<'a> {
+    packet_enum_name: String,
+    packets: &'a Vec<frontend::Packet>,
+}
+
+pub fn generate_rust_file<W: Write>(
+    protocol: &frontend::Protocol,
+    template_engine: &Handlebars,
+    mut writer: W,
+) -> Result<(), TemplateRenderError> {
+    let server_bound_ctx = GenerateContext {
+        packet_enum_name: format!("{}{}BoundPacket", &protocol.state, frontend::Bound::Server),
+        packets: &protocol.server_bound_packets,
+    };
+
+    let client_bound_ctx = GenerateContext {
+        packet_enum_name: format!("{}{}BoundPacket", &protocol.state, frontend::Bound::Client),
+        packets: &protocol.client_bound_packets,
+    };
+
+    let mut imports = vec![
+        "crate::DecodeError",
+        "crate::Decoder",
+        "std::io::Read",
+        "minecraft_protocol_derive::Packet",
+    ];
+
+    imports.extend(protocol.data_type_imports().iter());
+
+    template_engine.render_to_write(
+        "packet_imports",
+        &json!({ "imports": imports }),
+        &mut writer,
+    )?;
+
+    template_engine.render_to_write("packet_enum", &server_bound_ctx, &mut writer)?;
+    template_engine.render_to_write("packet_enum", &client_bound_ctx, &mut writer)?;
+
+    template_engine.render_to_write("packet_structs", &server_bound_ctx, &mut writer)?;
+    template_engine.render_to_write("packet_structs", &client_bound_ctx, &mut writer)?;
+
+    Ok(())
 }
