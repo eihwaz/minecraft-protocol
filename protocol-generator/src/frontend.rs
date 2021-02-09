@@ -1,13 +1,16 @@
-use crate::frontend;
+use crate::mappings::Mappings;
+use crate::{backend, frontend, transformers};
 use handlebars::{Handlebars, TemplateRenderError};
 use serde::Serialize;
 use serde_json::json;
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::fmt;
 use std::fmt::Display;
+use std::fs::{create_dir_all, File};
 use std::io::Write;
+use std::path::Path;
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug)]
 pub enum State {
     Handshake,
     Status,
@@ -16,7 +19,7 @@ pub enum State {
 }
 
 impl State {
-    pub fn data_import(&self) -> &str {
+    pub fn data_import(&self) -> &'static str {
         match self {
             State::Handshake => "crate::data::handshake::*",
             State::Status => "crate::data::status::*",
@@ -109,6 +112,8 @@ pub enum DataType {
     Int {
         var_int: bool,
     },
+    #[serde(rename(serialize = "u32"))]
+    UnsignedInt,
     #[serde(rename(serialize = "i64"))]
     Long {
         var_long: bool,
@@ -136,7 +141,7 @@ pub enum DataType {
 }
 
 impl DataType {
-    pub fn import<'a>(&self, state: &'a State) -> Option<&'a str> {
+    pub fn import(&self, state: &State) -> Option<&'static str> {
         match self {
             DataType::Uuid { .. } => Some("uuid::Uuid"),
             DataType::CompoundTag => Some("nbt::CompoundTag"),
@@ -149,75 +154,156 @@ impl DataType {
 
 #[derive(Debug)]
 pub struct Protocol {
-    pub state: State,
     pub server_bound_packets: Vec<Packet>,
     pub client_bound_packets: Vec<Packet>,
 }
 
 impl Protocol {
-    pub fn new(
-        state: State,
-        server_bound_packets: Vec<Packet>,
-        client_bound_packets: Vec<Packet>,
-    ) -> Protocol {
+    pub fn new(server_bound_packets: Vec<Packet>, client_bound_packets: Vec<Packet>) -> Protocol {
         Protocol {
-            state,
             server_bound_packets,
             client_bound_packets,
         }
     }
 
-    pub fn data_type_imports(&self) -> HashSet<&str> {
+    pub fn data_type_imports(&self, state: &State) -> HashSet<&'static str> {
         self.server_bound_packets
             .iter()
             .chain(self.client_bound_packets.iter())
             .flat_map(|p| p.fields.iter())
-            .filter_map(|f| f.data_type.import(&self.state))
+            .filter_map(|f| f.data_type.import(state))
             .collect()
     }
 }
 
-#[derive(Serialize)]
-struct GenerateContext<'a> {
-    packet_enum_name: String,
-    packets: &'a Vec<frontend::Packet>,
+pub fn generate_rust_files<M: Mappings>(
+    versions_data: HashMap<String, File>,
+    template_engine: &Handlebars,
+    mappings: &M,
+) -> Result<(), TemplateRenderError> {
+    generate_versions_module_file(template_engine, versions_data.keys().cloned().collect())?;
+
+    for (version, data_file) in versions_data.iter() {
+        println!("Generating protocol data for version {}", version);
+
+        let protocol_handler: backend::ProtocolHandler =
+            serde_json::from_reader(data_file).expect("Failed to parse protocol data");
+
+        let frontend_protocols =
+            transformers::transform_protocol_handler(mappings, &protocol_handler);
+
+        let formatted_version = version.replace(".", "_").replace("-", "_");
+
+        let folder_name = format!("protocol/src/version/v_{}", formatted_version);
+        let folder_path = Path::new(&folder_name);
+
+        generate_protocol_module_file(template_engine, &folder_path)?;
+
+        for (protocol, state) in frontend_protocols {
+            let file_name = format!("{}.rs", state.to_string().to_lowercase());
+
+            let mut file = File::create(folder_path.join(file_name))
+                .expect("Failed to create protocol enum file");
+
+            generate_protocol_enum_header(template_engine, &protocol, &state, &mut file)?;
+
+            generate_protocol_enum_content(
+                template_engine,
+                &protocol.server_bound_packets,
+                &state,
+                &Bound::Server,
+                &mut file,
+            )?;
+
+            generate_protocol_enum_content(
+                template_engine,
+                &protocol.client_bound_packets,
+                &state,
+                &Bound::Client,
+                &mut file,
+            )?;
+
+            generate_packets_structs(template_engine, &protocol.server_bound_packets, &mut file)?;
+
+            generate_packets_structs(template_engine, &protocol.client_bound_packets, &mut file)?;
+        }
+    }
+
+    Ok(())
 }
 
-pub fn generate_rust_file<W: Write>(
-    protocol: &frontend::Protocol,
+fn generate_versions_module_file(
     template_engine: &Handlebars,
-    mut writer: W,
+    versions: Vec<String>,
 ) -> Result<(), TemplateRenderError> {
-    let server_bound_ctx = GenerateContext {
-        packet_enum_name: format!("{}{}BoundPacket", &protocol.state, frontend::Bound::Server),
-        packets: &protocol.server_bound_packets,
-    };
+    let mut file =
+        File::create("protocol/src/version/mod.rs").expect("Failed to create versions module file");
 
-    let client_bound_ctx = GenerateContext {
-        packet_enum_name: format!("{}{}BoundPacket", &protocol.state, frontend::Bound::Client),
-        packets: &protocol.client_bound_packets,
-    };
+    let ctx = json!({ "versions": versions });
 
-    let mut imports = vec![
-        "crate::DecodeError",
-        "crate::Decoder",
-        "std::io::Read",
-        "minecraft_protocol_derive::Packet",
-    ];
+    template_engine.render_to_write("protocol_versions_module", &ctx, &mut file)?;
 
-    imports.extend(protocol.data_type_imports().iter());
+    Ok(())
+}
 
-    template_engine.render_to_write(
-        "packet_imports",
-        &json!({ "imports": imports }),
-        &mut writer,
-    )?;
+fn generate_protocol_module_file(
+    template_engine: &Handlebars,
+    folder_path: &Path,
+) -> Result<(), TemplateRenderError> {
+    generate_module_file(template_engine, folder_path, "protocol_module")
+}
 
-    template_engine.render_to_write("packet_enum", &server_bound_ctx, &mut writer)?;
-    template_engine.render_to_write("packet_enum", &client_bound_ctx, &mut writer)?;
+fn generate_module_file(
+    template_engine: &Handlebars,
+    folder_path: &Path,
+    name: &str,
+) -> Result<(), TemplateRenderError> {
+    create_dir_all(folder_path).expect("Failed to create module folder");
 
-    template_engine.render_to_write("packet_structs", &server_bound_ctx, &mut writer)?;
-    template_engine.render_to_write("packet_structs", &client_bound_ctx, &mut writer)?;
+    let mut file = File::create(folder_path.join("mod.rs")).expect("Failed to create module file");
+
+    template_engine.render_to_write(name, &(), &mut file)?;
+
+    Ok(())
+}
+
+fn generate_protocol_enum_header<W: Write>(
+    template_engine: &Handlebars,
+    protocol: &frontend::Protocol,
+    state: &frontend::State,
+    write: &mut W,
+) -> Result<(), TemplateRenderError> {
+    let imports = protocol.data_type_imports(state);
+    let ctx = json!({ "imports": imports });
+
+    template_engine.render_to_write("protocol_header", &ctx, write)?;
+
+    Ok(())
+}
+
+fn generate_protocol_enum_content<W: Write>(
+    template_engine: &Handlebars,
+    packets: &Vec<Packet>,
+    state: &frontend::State,
+    bound: &frontend::Bound,
+    write: &mut W,
+) -> Result<(), TemplateRenderError> {
+    let protocol_enum_name = format!("{}Bound{}Packet", bound, state);
+    let ctx = json!({ "protocol_enum_name": protocol_enum_name, "packets": packets });
+
+    template_engine.render_to_write("protocol_enum", &ctx, write)?;
+
+    Ok(())
+}
+
+fn generate_packets_structs<W: Write>(
+    template_engine: &Handlebars,
+    packets: &Vec<Packet>,
+    write: &mut W,
+) -> Result<(), TemplateRenderError> {
+    let ctx = json!({ "packets": packets });
+
+    template_engine.render_to_write("packets_structs", &ctx, write)?;
 
     Ok(())
 }

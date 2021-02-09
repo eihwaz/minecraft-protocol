@@ -26,7 +26,8 @@ pub struct Packets {
 #[serde(untagged)]
 pub enum Data {
     Type(String),
-    Container(Vec<Container>),
+    Containers(Vec<Container>),
+    Container(Box<Container>),
     Mapper {
         #[serde(rename = "type")]
         mappings_type: String,

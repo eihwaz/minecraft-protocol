@@ -1,7 +1,9 @@
 use std::fs::File;
 
 use crate::mappings::CodeMappings;
-use structopt::StructOpt;
+use std::fs;
+use std::io::Error;
+use std::path::Path;
 
 pub mod backend;
 pub mod frontend;
@@ -9,74 +11,47 @@ pub mod mappings;
 pub mod templates;
 pub mod transformers;
 
-#[derive(StructOpt)]
-#[structopt(name = "protocol-generator")]
-struct Opt {
-    #[structopt(short, long, default_value = "1.14.4")]
-    protocol_version: String,
-}
-
 pub fn main() {
-    let opt: Opt = Opt::from_args();
+    let paths = fs::read_dir("protocol-generator/minecraft-data/data/pc/")
+        .expect("Failed to open data folder");
+
+    let versions_data = paths
+        .into_iter()
+        .map(|entry| {
+            entry
+                .expect("Failed to get dir entry")
+                .file_name()
+                .into_string()
+                .expect("Failed to get version string")
+        })
+        .filter(|version| match version.as_str() {
+            "0.30c" => false, // A very old version with a lot of incompatibility.
+            "1.7" => false,   // Requires some fixes to support.
+            _ => true,
+        })
+        .filter_map(|version| {
+            let protocol_data_file_name = format!(
+                "protocol-generator/minecraft-data/data/pc/{}/protocol.json",
+                version
+            );
+
+            let protocol_data_file_path = Path::new(&protocol_data_file_name);
+
+            match protocol_data_file_path.exists() {
+                true => {
+                    let protocol_data_file = File::open(protocol_data_file_path)
+                        .expect("Failed to open protocol data file");
+
+                    Some((version, protocol_data_file))
+                }
+                false => None,
+            }
+        })
+        .collect();
+
     let template_engine = templates::create_template_engine();
+    let mappings = CodeMappings::new();
 
-    let protocol_data_file_name = format!(
-        "protocol-generator/minecraft-data/data/pc/{}/protocol.json",
-        opt.protocol_version
-    );
-
-    let protocol_data_file =
-        File::open(protocol_data_file_name).expect("Failed to open protocol data file");
-
-    let protocol_handler: backend::ProtocolHandler =
-        serde_json::from_reader(protocol_data_file).expect("Failed to parse protocol data");
-
-    let mappings = CodeMappings {};
-
-    let protocols = vec![
-        (
-            transformers::transform_protocol(
-                &mappings,
-                frontend::State::Handshake,
-                &protocol_handler.handshaking,
-            ),
-            frontend::State::Handshake,
-        ),
-        (
-            transformers::transform_protocol(
-                &mappings,
-                frontend::State::Status,
-                &protocol_handler.status,
-            ),
-            frontend::State::Status,
-        ),
-        (
-            transformers::transform_protocol(
-                &mappings,
-                frontend::State::Login,
-                &protocol_handler.login,
-            ),
-            frontend::State::Login,
-        ),
-        (
-            transformers::transform_protocol(
-                &mappings,
-                frontend::State::Game,
-                &protocol_handler.game,
-            ),
-            frontend::State::Game,
-        ),
-    ];
-
-    for (protocol, state) in protocols {
-        let file_name = format!(
-            "protocol/src/packet/{}.rs",
-            state.to_string().to_lowercase()
-        );
-
-        let file = File::create(file_name).expect("Failed to create file");
-
-        frontend::generate_rust_file(&protocol, &template_engine, &file)
-            .expect("Failed to generate rust file");
-    }
+    frontend::generate_rust_files(versions_data, &template_engine, &mappings)
+        .expect("Failed to generate rust files");
 }

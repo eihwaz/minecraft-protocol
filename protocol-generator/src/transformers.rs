@@ -1,12 +1,34 @@
-use crate::backend::Data;
 use crate::mappings::Mappings;
 use crate::{backend, frontend};
 use heck::{CamelCase, SnakeCase};
 use std::collections::HashMap;
 
-pub fn transform_protocol<M: Mappings>(
+pub fn transform_protocol_handler<M: Mappings>(
     mappings: &M,
-    state: frontend::State,
+    protocol_handler: &backend::ProtocolHandler,
+) -> Vec<(frontend::Protocol, frontend::State)> {
+    vec![
+        (
+            transform_protocol::<M>(&mappings, &protocol_handler.handshaking),
+            frontend::State::Handshake,
+        ),
+        (
+            transform_protocol::<M>(&mappings, &protocol_handler.status),
+            frontend::State::Status,
+        ),
+        (
+            transform_protocol::<M>(&mappings, &protocol_handler.login),
+            frontend::State::Login,
+        ),
+        (
+            transform_protocol::<M>(&mappings, &protocol_handler.game),
+            frontend::State::Game,
+        ),
+    ]
+}
+
+fn transform_protocol<M: Mappings>(
+    mappings: &M,
     protocol: &backend::Protocol,
 ) -> frontend::Protocol {
     let server_bound_packets = transform_packets(
@@ -24,7 +46,6 @@ pub fn transform_protocol<M: Mappings>(
     );
 
     frontend::Protocol {
-        state,
         server_bound_packets,
         client_bound_packets,
     }
@@ -36,7 +57,7 @@ fn get_packet_ids(packets: &backend::Packets) -> HashMap<String, u8> {
         .get("packet")
         .and_then(|d| d.get(1))
         .and_then(|d| match d {
-            backend::Data::Container(data) => data.get(0),
+            backend::Data::Containers(data) => data.get(0),
             _ => None,
         })
         .and_then(|c| match c {
@@ -92,7 +113,7 @@ fn transform_packets<M: Mappings>(
         let mut fields = vec![];
 
         for data in data_vec {
-            if let backend::Data::Container(container_vec) = data {
+            if let backend::Data::Containers(container_vec) = data {
                 for container in container_vec {
                     match container {
                         backend::Container::Value { name, data } => {
@@ -183,6 +204,7 @@ fn transform_data_type(name: &str) -> Option<frontend::DataType> {
         "i64" => Some(frontend::DataType::Long { var_long: false }),
         "u8" => Some(frontend::DataType::UnsignedByte),
         "u16" => Some(frontend::DataType::UnsignedShort),
+        "u32" => Some(frontend::DataType::UnsignedInt),
         "f32" => Some(frontend::DataType::Float),
         "f64" => Some(frontend::DataType::Double),
         "varint" => Some(frontend::DataType::Int { var_int: true }),

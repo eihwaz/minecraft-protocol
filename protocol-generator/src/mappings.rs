@@ -15,6 +15,12 @@ pub trait Mappings {
 
 pub struct CodeMappings {}
 
+impl CodeMappings {
+    pub fn new() -> CodeMappings {
+        CodeMappings {}
+    }
+}
+
 impl Mappings for CodeMappings {
     fn rename_packet(
         &self,
@@ -50,15 +56,15 @@ impl Mappings for CodeMappings {
 
     fn change_field_type(&self, packet_name: &str, field: frontend::Field) -> frontend::Field {
         match (packet_name, field.name.as_str()) {
-            ("StatusResponse", "response") => field.change_type(frontend::DataType::RefType {
-                ref_name: "ServerStatus".to_owned(),
-            }),
-            ("Success", "uuid") => field.change_type(frontend::DataType::Uuid { hyphenated: true }),
-            ("Disconnect", "reason") => field.change_type(frontend::DataType::Chat),
-            ("ClientBoundChat", "message") => field.change_type(frontend::DataType::Chat),
-            ("ClientBoundChat", "position") => field.change_type(frontend::DataType::RefType {
-                ref_name: "MessagePosition".to_owned(),
-            }),
+            // ("StatusResponse", "response") => field.change_type(frontend::DataType::RefType {
+            //     ref_name: "ServerStatus".to_owned(),
+            // }),
+            // ("Success", "uuid") => field.change_type(frontend::DataType::Uuid { hyphenated: true }),
+            // ("Disconnect", "reason") => field.change_type(frontend::DataType::Chat),
+            // ("ClientBoundChat", "message") => field.change_type(frontend::DataType::Chat),
+            // ("ClientBoundChat", "position") => field.change_type(frontend::DataType::RefType {
+            //     ref_name: "MessagePosition".to_owned(),
+            // }),
             _ => field,
         }
     }
