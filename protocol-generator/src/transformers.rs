@@ -1,3 +1,4 @@
+use crate::backend::Data;
 use crate::mappings::Mappings;
 use crate::{backend, frontend};
 use heck::{CamelCase, SnakeCase};
@@ -27,6 +28,36 @@ pub fn transform_protocol<M: Mappings>(
         server_bound_packets,
         client_bound_packets,
     }
+}
+
+fn get_packet_ids(packets: &backend::Packets) -> HashMap<String, u8> {
+    let reversed_packet_ids = packets
+        .types
+        .get("packet")
+        .and_then(|d| d.get(1))
+        .and_then(|d| match d {
+            backend::Data::Container(data) => data.get(0),
+            _ => None,
+        })
+        .and_then(|c| match c {
+            backend::Container::List { data_vec, .. } => data_vec.get(1),
+            _ => None,
+        })
+        .and_then(|d| match d {
+            backend::Data::Mapper { mappings, .. } => Some(mappings),
+            _ => None,
+        })
+        .expect("Failed to get packet ids");
+
+    reversed_packet_ids
+        .into_iter()
+        .map(|(k, v)| {
+            (
+                v.clone(),
+                u8::from_str_radix(k.trim_start_matches("0x"), 16).expect("Invalid packet id"),
+            )
+        })
+        .collect()
 }
 
 fn transform_packets<M: Mappings>(
@@ -65,7 +96,7 @@ fn transform_packets<M: Mappings>(
                 for container in container_vec {
                     match container {
                         backend::Container::Value { name, data } => {
-                            match transform_field(&name, &data) {
+                            match transform_value_field(&name, &data) {
                                 Some(field) => {
                                     fields.push(mappings.change_field_type(&packet_name, field))
                                 }
@@ -77,15 +108,11 @@ fn transform_packets<M: Mappings>(
                         }
                         backend::Container::List { name, data_vec } => {
                             if let Some(name) = name {
-                                for data in data_vec {
-                                    match transform_field(&name, &data) {
-                                        Some(field) => fields
-                                            .push(mappings.change_field_type(&packet_name, field)),
-                                        None => println!(
-                                            "[{}] Field \"{}\" are skipped ({:?})",
-                                            packet_name, name, data_vec
-                                        ),
+                                match transform_list_field(&name, data_vec) {
+                                    Some(field) => {
+                                        fields.push(mappings.change_field_type(&packet_name, field))
                                     }
+                                    None => {}
                                 }
                             }
                         }
@@ -106,37 +133,10 @@ fn transform_packets<M: Mappings>(
     output_packets
 }
 
-fn get_packet_ids(packets: &backend::Packets) -> HashMap<String, u8> {
-    let reversed_packet_ids = packets
-        .types
-        .get("packet")
-        .and_then(|d| d.get(1))
-        .and_then(|d| match d {
-            backend::Data::Container(data) => data.get(0),
-            _ => None,
-        })
-        .and_then(|c| match c {
-            backend::Container::List { data_vec, .. } => data_vec.get(1),
-            _ => None,
-        })
-        .and_then(|d| match d {
-            backend::Data::Mapper { mappings, .. } => Some(mappings),
-            _ => None,
-        })
-        .expect("Failed to get packet ids");
-
-    reversed_packet_ids
-        .into_iter()
-        .map(|(k, v)| {
-            (
-                v.clone(),
-                u8::from_str_radix(k.trim_start_matches("0x"), 16).expect("Invalid packet id"),
-            )
-        })
-        .collect()
-}
-
-fn transform_field(unformatted_field_name: &str, data: &backend::Data) -> Option<frontend::Field> {
+fn transform_value_field(
+    unformatted_field_name: &str,
+    data: &backend::Data,
+) -> Option<frontend::Field> {
     match data {
         backend::Data::Type(name) => match transform_data_type(name) {
             Some(data_type) => Some(frontend::Field {
@@ -144,6 +144,31 @@ fn transform_field(unformatted_field_name: &str, data: &backend::Data) -> Option
                 data_type,
             }),
             None => None,
+        },
+        _ => None,
+    }
+}
+
+fn transform_list_field(
+    unformatted_field_name: &str,
+    data_vec: &Vec<backend::Data>,
+) -> Option<frontend::Field> {
+    match &data_vec[0] {
+        backend::Data::Type(name) => match name.as_ref() {
+            "buffer" => Some(frontend::Field {
+                name: format_field_name(unformatted_field_name),
+                data_type: frontend::DataType::ByteArray { rest: false },
+            }),
+            "array" => None,
+            "switch" => None,
+            "particleData" => Some(frontend::Field {
+                name: format_field_name(unformatted_field_name),
+                data_type: frontend::DataType::RefType {
+                    ref_name: "ParticleData".to_string(),
+                },
+            }),
+            "option" => transform_value_field(unformatted_field_name, &data_vec[1]),
+            _ => None,
         },
         _ => None,
     }
@@ -165,7 +190,6 @@ fn transform_data_type(name: &str) -> Option<frontend::DataType> {
         "string" => Some(frontend::DataType::String { max_length: 0 }),
         "nbt" | "optionalNbt" => Some(frontend::DataType::CompoundTag),
         "UUID" => Some(frontend::DataType::Uuid { hyphenated: false }),
-        "buffer" => Some(frontend::DataType::ByteArray { rest: false }),
         "restBuffer" => Some(frontend::DataType::ByteArray { rest: true }),
         "position" => Some(frontend::DataType::RefType {
             ref_name: "Position".to_string(),
@@ -179,7 +203,6 @@ fn transform_data_type(name: &str) -> Option<frontend::DataType> {
         "tags" => Some(frontend::DataType::RefType {
             ref_name: "TagsMap".to_string(),
         }),
-        "option" => None,
         _ => {
             println!("Unknown data type \"{}\"", name);
             None

@@ -1908,6 +1908,7 @@ impl GameClientBoundPacket {
         offset_z: f32,
         particle_data: f32,
         particles: i32,
+        data: ParticleData,
     ) -> Self {
         let world_particles = WorldParticles {
             particle_id,
@@ -1920,6 +1921,7 @@ impl GameClientBoundPacket {
             offset_z,
             particle_data,
             particles,
+            data,
         };
 
         Self::WorldParticles(world_particles)
@@ -3157,6 +3159,7 @@ pub struct WorldParticles {
     pub offset_z: f32,
     pub particle_data: f32,
     pub particles: i32,
+    pub data: ParticleData,
 }
 
 #[derive(Packet, Debug)]

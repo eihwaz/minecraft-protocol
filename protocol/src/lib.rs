@@ -10,7 +10,7 @@ use uuid::Uuid;
 
 use data::chat::Message;
 
-use crate::data::game::{Metadata, Position, Slot, TagsMap};
+use crate::data::game::{Metadata, ParticleData, Position, Slot, TagsMap};
 use crate::error::{DecodeError, EncodeError};
 
 pub mod data;
@@ -606,6 +606,20 @@ impl Encoder for TagsMap {
 }
 
 impl Decoder for TagsMap {
+    type Output = Self;
+
+    fn decode<R: Read>(reader: &mut R) -> Result<Self::Output, DecodeError> {
+        unimplemented!()
+    }
+}
+
+impl Encoder for ParticleData {
+    fn encode<W: Write>(&self, writer: &mut W) -> Result<(), EncodeError> {
+        unimplemented!()
+    }
+}
+
+impl Decoder for ParticleData {
     type Output = Self;
 
     fn decode<R: Read>(reader: &mut R) -> Result<Self::Output, DecodeError> {

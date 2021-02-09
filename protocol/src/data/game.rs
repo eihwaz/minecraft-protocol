@@ -42,3 +42,6 @@ pub struct Metadata {}
 
 #[derive(Debug)]
 pub struct TagsMap {}
+
+#[derive(Debug)]
+pub struct ParticleData {}
