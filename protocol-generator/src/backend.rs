@@ -55,10 +55,6 @@ pub enum Container {
 #[derive(Debug, Deserialize, PartialEq, Eq)]
 #[serde(untagged)]
 pub enum Switch {
-    Empty {
-        #[serde(rename = "compareTo")]
-        compare_to: String,
-    },
     Value {
         #[serde(rename = "compareTo")]
         compare_to: String,
@@ -69,15 +65,15 @@ pub enum Switch {
         compare_to: String,
         fields: LinkedHashMap<String, Vec<Data>>,
     },
+    Empty {
+        #[serde(rename = "compareTo")]
+        compare_to: String,
+    },
 }
 
 #[derive(Debug, Deserialize, PartialEq, Eq)]
 #[serde(untagged)]
 pub enum List {
-    Empty {
-        #[serde(rename = "countType")]
-        count_type: String,
-    },
     Value {
         #[serde(rename = "countType")]
         count_type: String,
@@ -89,6 +85,10 @@ pub enum List {
         count_type: String,
         #[serde(rename = "type")]
         list_type: Vec<Data>,
+    },
+    Empty {
+        #[serde(rename = "countType")]
+        count_type: String,
     },
 }
 

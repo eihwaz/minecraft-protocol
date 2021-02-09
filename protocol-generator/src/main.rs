@@ -28,7 +28,7 @@ pub fn main() {
     let protocol_data_file =
         File::open(protocol_data_file_name).expect("Failed to open protocol data file");
 
-    let protocol_input: backend::ProtocolHandler =
+    let protocol_handler: backend::ProtocolHandler =
         serde_json::from_reader(protocol_data_file).expect("Failed to parse protocol data");
 
     let mappings = CodeMappings {};
@@ -38,7 +38,7 @@ pub fn main() {
             transformers::transform_protocol(
                 &mappings,
                 frontend::State::Handshake,
-                &protocol_input.handshaking,
+                &protocol_handler.handshaking,
             ),
             frontend::State::Handshake,
         ),
@@ -46,7 +46,7 @@ pub fn main() {
             transformers::transform_protocol(
                 &mappings,
                 frontend::State::Status,
-                &protocol_input.status,
+                &protocol_handler.status,
             ),
             frontend::State::Status,
         ),
@@ -54,7 +54,7 @@ pub fn main() {
             transformers::transform_protocol(
                 &mappings,
                 frontend::State::Login,
-                &protocol_input.login,
+                &protocol_handler.login,
             ),
             frontend::State::Login,
         ),
@@ -62,7 +62,7 @@ pub fn main() {
             transformers::transform_protocol(
                 &mappings,
                 frontend::State::Game,
-                &protocol_input.game,
+                &protocol_handler.game,
             ),
             frontend::State::Game,
         ),
@@ -73,6 +73,7 @@ pub fn main() {
             "protocol/src/packet/{}.rs",
             state.to_string().to_lowercase()
         );
+
         let file = File::create(file_name).expect("Failed to create file");
 
         frontend::generate_rust_file(&protocol, &template_engine, &file)
