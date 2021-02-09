@@ -1,132 +1,26 @@
 //! This crate implements Minecraft protocol.
 //!
 //! Information about protocol can be found at https://wiki.vg/Protocol.
-use io::Error as IoError;
-use std::io;
 use std::io::{Cursor, Read, Write};
-use std::string::FromUtf8Error;
 
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
-use serde_json::error::Error as JsonError;
-use uuid::parser::ParseError as UuidParseError;
-
-use crate::chat::Message;
-use nbt::decode::TagDecodeError;
 use nbt::CompoundTag;
 use num_traits::{FromPrimitive, ToPrimitive};
 use uuid::Uuid;
 
-pub mod chat;
-pub mod game;
-pub mod login;
-pub mod status;
+use data::chat::Message;
+
+use crate::error::{DecodeError, EncodeError};
+
+pub mod data;
+pub mod error;
+pub mod version;
 
 /// Current supported protocol version.
 pub const PROTOCOL_VERSION: u32 = 498;
 /// Protocol limits maximum string length.
 const STRING_MAX_LENGTH: u16 = 32_768;
 const HYPHENATED_UUID_LENGTH: u16 = 36;
-
-/// Possible errors while encoding packet.
-#[derive(Debug)]
-pub enum EncodeError {
-    /// String length can't be more than provided value.
-    StringTooLong {
-        /// String length.
-        length: usize,
-        /// Max string length.
-        max_length: u16,
-    },
-    IOError {
-        io_error: IoError,
-    },
-    JsonError {
-        json_error: JsonError,
-    },
-}
-
-impl From<IoError> for EncodeError {
-    fn from(io_error: IoError) -> Self {
-        EncodeError::IOError { io_error }
-    }
-}
-
-impl From<JsonError> for EncodeError {
-    fn from(json_error: JsonError) -> Self {
-        EncodeError::JsonError { json_error }
-    }
-}
-
-/// Possible errors while decoding packet.
-#[derive(Debug)]
-pub enum DecodeError {
-    /// Packet was not recognized. Invalid data or wrong protocol version.
-    UnknownPacketType {
-        type_id: u8,
-    },
-    /// String length can't be more than provided value.
-    StringTooLong {
-        /// String length.
-        length: usize,
-        /// Max string length.
-        max_length: u16,
-    },
-    IOError {
-        io_error: IoError,
-    },
-    JsonError {
-        json_error: JsonError,
-    },
-    /// Byte array was not recognized as valid UTF-8 string.
-    Utf8Error {
-        utf8_error: FromUtf8Error,
-    },
-    /// Boolean are parsed from byte. Valid byte value are 0 or 1.
-    NonBoolValue,
-    UuidParseError {
-        uuid_parse_error: UuidParseError,
-    },
-    // Type id was not parsed as valid enum value.
-    UnknownEnumType {
-        type_id: u8,
-    },
-    TagDecodeError {
-        tag_decode_error: TagDecodeError,
-    },
-    VarIntTooLong {
-        max_bytes: usize,
-    },
-}
-
-impl From<IoError> for DecodeError {
-    fn from(io_error: IoError) -> Self {
-        DecodeError::IOError { io_error }
-    }
-}
-
-impl From<JsonError> for DecodeError {
-    fn from(json_error: JsonError) -> Self {
-        DecodeError::JsonError { json_error }
-    }
-}
-
-impl From<FromUtf8Error> for DecodeError {
-    fn from(utf8_error: FromUtf8Error) -> Self {
-        DecodeError::Utf8Error { utf8_error }
-    }
-}
-
-impl From<UuidParseError> for DecodeError {
-    fn from(uuid_parse_error: UuidParseError) -> Self {
-        DecodeError::UuidParseError { uuid_parse_error }
-    }
-}
-
-impl From<TagDecodeError> for DecodeError {
-    fn from(tag_decode_error: TagDecodeError) -> Self {
-        DecodeError::TagDecodeError { tag_decode_error }
-    }
-}
 
 trait Encoder {
     fn encode<W: Write>(&self, writer: &mut W) -> Result<(), EncodeError>;
@@ -331,6 +225,20 @@ impl<R: Read> DecoderReadExt for R {
     read_signed_var_int!(i64, read_var_i64, 10);
 }
 
+impl Encoder for i8 {
+    fn encode<W: Write>(&self, writer: &mut W) -> Result<(), EncodeError> {
+        Ok(writer.write_i8(*self)?)
+    }
+}
+
+impl Decoder for i8 {
+    type Output = Self;
+
+    fn decode<R: Read>(reader: &mut R) -> Result<Self::Output, DecodeError> {
+        Ok(reader.read_i8()?)
+    }
+}
+
 impl Encoder for u8 {
     fn encode<W: Write>(&self, writer: &mut W) -> Result<(), EncodeError> {
         Ok(writer.write_u8(*self)?)
@@ -342,6 +250,34 @@ impl Decoder for u8 {
 
     fn decode<R: Read>(reader: &mut R) -> Result<Self::Output, DecodeError> {
         Ok(reader.read_u8()?)
+    }
+}
+
+impl Encoder for i16 {
+    fn encode<W: Write>(&self, writer: &mut W) -> Result<(), EncodeError> {
+        Ok(writer.write_i16::<BigEndian>(*self)?)
+    }
+}
+
+impl Decoder for i16 {
+    type Output = Self;
+
+    fn decode<R: Read>(reader: &mut R) -> Result<Self::Output, DecodeError> {
+        Ok(reader.read_i16::<BigEndian>()?)
+    }
+}
+
+impl Encoder for u16 {
+    fn encode<W: Write>(&self, writer: &mut W) -> Result<(), EncodeError> {
+        Ok(writer.write_u16::<BigEndian>(*self)?)
+    }
+}
+
+impl Decoder for u16 {
+    type Output = Self;
+
+    fn decode<R: Read>(reader: &mut R) -> Result<Self::Output, DecodeError> {
+        Ok(reader.read_u16::<BigEndian>()?)
     }
 }
 
@@ -426,6 +362,34 @@ impl Decoder for bool {
 
     fn decode<R: Read>(reader: &mut R) -> Result<Self::Output, DecodeError> {
         Ok(reader.read_bool()?)
+    }
+}
+
+impl Encoder for f32 {
+    fn encode<W: Write>(&self, writer: &mut W) -> Result<(), EncodeError> {
+        Ok(writer.write_f32::<BigEndian>(*self)?)
+    }
+}
+
+impl Decoder for f32 {
+    type Output = Self;
+
+    fn decode<R: Read>(reader: &mut R) -> Result<Self::Output, DecodeError> {
+        Ok(reader.read_f32::<BigEndian>()?)
+    }
+}
+
+impl Encoder for f64 {
+    fn encode<W: Write>(&self, writer: &mut W) -> Result<(), EncodeError> {
+        Ok(writer.write_f64::<BigEndian>(*self)?)
+    }
+}
+
+impl Decoder for f64 {
+    type Output = Self;
+
+    fn decode<R: Read>(reader: &mut R) -> Result<Self::Output, DecodeError> {
+        Ok(reader.read_f64::<BigEndian>()?)
     }
 }
 
@@ -546,9 +510,10 @@ macro_rules! impl_json_encoder_decoder (
 );
 
 mod var_int {
+    use std::io::{Read, Write};
+
     use crate::{DecodeError, EncodeError};
     use crate::{DecoderReadExt, EncoderWriteExt};
-    use std::io::{Read, Write};
 
     pub fn encode<W: Write>(value: &i32, writer: &mut W) -> Result<(), EncodeError> {
         writer.write_var_i32(*value)?;
@@ -562,9 +527,10 @@ mod var_int {
 }
 
 mod var_long {
+    use std::io::{Read, Write};
+
     use crate::{DecodeError, EncodeError};
     use crate::{DecoderReadExt, EncoderWriteExt};
-    use std::io::{Read, Write};
 
     pub fn encode<W: Write>(value: &i64, writer: &mut W) -> Result<(), EncodeError> {
         writer.write_var_i64(*value)?;
@@ -578,8 +544,9 @@ mod var_long {
 }
 
 mod rest {
-    use crate::{DecodeError, EncodeError};
     use std::io::{Read, Write};
+
+    use crate::{DecodeError, EncodeError};
 
     pub fn encode<W: Write>(value: &[u8], writer: &mut W) -> Result<(), EncodeError> {
         writer.write_all(value)?;
@@ -596,11 +563,14 @@ mod rest {
 }
 
 mod uuid_hyp_str {
+    use std::io::Cursor;
+    use std::io::{Read, Write};
+
+    use uuid::Uuid;
+
     use crate::{
         DecodeError, DecoderReadExt, EncodeError, EncoderWriteExt, HYPHENATED_UUID_LENGTH,
     };
-    use std::io::{Read, Write};
-    use uuid::Uuid;
 
     pub fn encode<W: Write>(value: &Uuid, writer: &mut W) -> Result<(), EncodeError> {
         let uuid_hyphenated_string = value.to_hyphenated().to_string();

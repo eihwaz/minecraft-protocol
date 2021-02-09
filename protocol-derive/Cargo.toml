@@ -7,7 +7,7 @@ description = "Derive macro for reading and writing Minecraft packets"
 license = "MIT"
 homepage = "https://github.com/eihwaz/minecraft-protocol"
 repository = "https://github.com/eihwaz/minecraft-protocol"
-keywords = ["minecraft", "protocol", "packet", "io"]
+keywords = ["minecraft", "derive", "protocol", "packet", "io"]
 
 [lib]
 proc-macro = true
