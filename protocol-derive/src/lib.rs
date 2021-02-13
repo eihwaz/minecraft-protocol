@@ -1,11 +1,10 @@
 extern crate proc_macro;
 
 use proc_macro::TokenStream as TokenStream1;
-use proc_macro2::Ident;
 use proc_macro2::TokenStream as TokenStream2;
+use proc_macro2::{Ident, Span};
 use quote::{quote, TokenStreamExt};
 use std::iter::FromIterator;
-use syn::export::Span;
 use syn::{parse_macro_input, Data, DeriveInput, Field, Fields, Lit, Meta, NestedMeta};
 
 #[proc_macro_derive(Packet, attributes(packet))]

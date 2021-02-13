@@ -6,7 +6,7 @@
 //! ## Serialize
 //!
 //! ```
-//! use minecraft_protocol::chat::{Payload, Color, MessageBuilder};
+//! use minecraft_protocol::data::chat::{MessageBuilder, Payload, Color};
 //!
 //! let message = MessageBuilder::builder(Payload::text("Hello"))
 //!    .color(Color::Yellow)
@@ -25,7 +25,7 @@
 //! ## Deserialize
 //!
 //! ```
-//! use minecraft_protocol::chat::{MessageBuilder, Color, Payload, Message};
+//! use minecraft_protocol::data::chat::{MessageBuilder, Color, Payload, Message};
 //!
 //! let json = r#"
 //! {
@@ -61,7 +61,6 @@
 //! assert_eq!(expected_message, Message::from_json(json).unwrap());
 //! ```
 
-use crate::impl_json_encoder_decoder;
 use serde::{
     de::{self, Visitor},
     Deserialize, Serialize,
@@ -93,7 +92,7 @@ pub enum Color {
     /// # Examples
     ///
     /// ```
-    /// use minecraft_protocol::chat::Color;
+    /// use minecraft_protocol::data::chat::Color;
     ///
     /// let color = Color::Hex("#f98aff".into());
     /// ```
@@ -333,8 +332,6 @@ impl Message {
     }
 }
 
-impl_json_encoder_decoder!(Message);
-
 pub struct MessageBuilder {
     current: Message,
     root: Option<Message>,
@@ -429,318 +426,323 @@ impl MessageBuilder {
     }
 }
 
-#[test]
-fn test_serialize_text_hello_world() {
-    let message = MessageBuilder::builder(Payload::text("Hello"))
-        .color(Color::Yellow)
-        .bold(true)
-        .then(Payload::text("world"))
-        .color(Color::Green)
-        .bold(true)
-        .italic(true)
-        .then(Payload::text("!"))
-        .color(Color::Blue)
-        .build();
+#[cfg(test)]
+mod tests {
+    use crate::data::chat::{Color, Message, MessageBuilder, Payload};
 
-    assert_eq!(
-        message.to_json().unwrap(),
-        include_str!("../test/chat/text_hello_world.json")
-    );
-}
+    #[test]
+    fn test_serialize_text_hello_world() {
+        let message = MessageBuilder::builder(Payload::text("Hello"))
+            .color(Color::Yellow)
+            .bold(true)
+            .then(Payload::text("world"))
+            .color(Color::Green)
+            .bold(true)
+            .italic(true)
+            .then(Payload::text("!"))
+            .color(Color::Blue)
+            .build();
 
-#[test]
-fn test_deserialize_text_hello_world() {
-    let expected_message = MessageBuilder::builder(Payload::text("Hello"))
-        .color(Color::Yellow)
-        .bold(true)
-        .then(Payload::text("world"))
-        .color(Color::Green)
-        .bold(true)
-        .italic(true)
-        .then(Payload::text("!"))
-        .color(Color::Blue)
-        .build();
+        assert_eq!(
+            message.to_json().unwrap(),
+            include_str!("../test/chat/text_hello_world.json")
+        );
+    }
 
-    assert_eq!(
-        expected_message,
-        Message::from_json(include_str!("../test/chat/text_hello_world.json")).unwrap()
-    );
-}
+    #[test]
+    fn test_deserialize_text_hello_world() {
+        let expected_message = MessageBuilder::builder(Payload::text("Hello"))
+            .color(Color::Yellow)
+            .bold(true)
+            .then(Payload::text("world"))
+            .color(Color::Green)
+            .bold(true)
+            .italic(true)
+            .then(Payload::text("!"))
+            .color(Color::Blue)
+            .build();
 
-#[test]
-fn test_serialize_translate_opped_steve() {
-    let with = vec![Message::new(Payload::text("Steve"))];
-    let message = Message::new(Payload::translation("Opped %s", with));
+        assert_eq!(
+            expected_message,
+            Message::from_json(include_str!("../test/chat/text_hello_world.json")).unwrap()
+        );
+    }
 
-    assert_eq!(
-        message.to_json().unwrap(),
-        include_str!("../test/chat/translate_opped_steve.json")
-    );
-}
+    #[test]
+    fn test_serialize_translate_opped_steve() {
+        let with = vec![Message::new(Payload::text("Steve"))];
+        let message = Message::new(Payload::translation("Opped %s", with));
 
-#[test]
-fn test_deserialize_translate_opped_steve() {
-    let with = vec![Message::new(Payload::text("Steve"))];
-    let expected_message = Message::new(Payload::translation("Opped %s", with));
+        assert_eq!(
+            message.to_json().unwrap(),
+            include_str!("../test/chat/translate_opped_steve.json")
+        );
+    }
 
-    assert_eq!(
-        expected_message,
-        Message::from_json(include_str!("../test/chat/translate_opped_steve.json")).unwrap()
-    );
-}
+    #[test]
+    fn test_deserialize_translate_opped_steve() {
+        let with = vec![Message::new(Payload::text("Steve"))];
+        let expected_message = Message::new(Payload::translation("Opped %s", with));
 
-#[test]
-fn test_serialize_keybind_jump() {
-    let message = MessageBuilder::builder(Payload::text("Press \""))
-        .color(Color::Yellow)
-        .bold(true)
-        .then(Payload::keybind("key.jump"))
-        .color(Color::Blue)
-        .bold(false)
-        .underlined(true)
-        .then(Payload::text("\" to jump!"))
-        .build();
+        assert_eq!(
+            expected_message,
+            Message::from_json(include_str!("../test/chat/translate_opped_steve.json")).unwrap()
+        );
+    }
 
-    assert_eq!(
-        message.to_json().unwrap(),
-        include_str!("../test/chat/keybind_jump.json")
-    );
-}
+    #[test]
+    fn test_serialize_keybind_jump() {
+        let message = MessageBuilder::builder(Payload::text("Press \""))
+            .color(Color::Yellow)
+            .bold(true)
+            .then(Payload::keybind("key.jump"))
+            .color(Color::Blue)
+            .bold(false)
+            .underlined(true)
+            .then(Payload::text("\" to jump!"))
+            .build();
 
-#[test]
-fn test_deserialize_keybind_jump() {
-    let expected_message = MessageBuilder::builder(Payload::text("Press \""))
-        .color(Color::Yellow)
-        .bold(true)
-        .then(Payload::keybind("key.jump"))
-        .color(Color::Blue)
-        .bold(false)
-        .underlined(true)
-        .then(Payload::text("\" to jump!"))
-        .build();
+        assert_eq!(
+            message.to_json().unwrap(),
+            include_str!("../test/chat/keybind_jump.json")
+        );
+    }
 
-    assert_eq!(
-        expected_message,
-        Message::from_json(include_str!("../test/chat/keybind_jump.json")).unwrap()
-    );
-}
+    #[test]
+    fn test_deserialize_keybind_jump() {
+        let expected_message = MessageBuilder::builder(Payload::text("Press \""))
+            .color(Color::Yellow)
+            .bold(true)
+            .then(Payload::keybind("key.jump"))
+            .color(Color::Blue)
+            .bold(false)
+            .underlined(true)
+            .then(Payload::text("\" to jump!"))
+            .build();
 
-#[test]
-fn test_serialize_click_open_url() {
-    let message = MessageBuilder::builder(Payload::text("click me"))
-        .color(Color::Yellow)
-        .bold(true)
-        .click_open_url("http://minecraft.net")
-        .build();
+        assert_eq!(
+            expected_message,
+            Message::from_json(include_str!("../test/chat/keybind_jump.json")).unwrap()
+        );
+    }
 
-    assert_eq!(
-        message.to_json().unwrap(),
-        include_str!("../test/chat/click_open_url.json")
-    );
-}
+    #[test]
+    fn test_serialize_click_open_url() {
+        let message = MessageBuilder::builder(Payload::text("click me"))
+            .color(Color::Yellow)
+            .bold(true)
+            .click_open_url("http://minecraft.net")
+            .build();
 
-#[test]
-fn test_deserialize_click_open_url() {
-    let expected_message = MessageBuilder::builder(Payload::text("click me"))
-        .color(Color::Yellow)
-        .bold(true)
-        .click_open_url("http://minecraft.net")
-        .build();
+        assert_eq!(
+            message.to_json().unwrap(),
+            include_str!("../test/chat/click_open_url.json")
+        );
+    }
 
-    assert_eq!(
-        expected_message,
-        Message::from_json(include_str!("../test/chat/click_open_url.json")).unwrap()
-    );
-}
+    #[test]
+    fn test_deserialize_click_open_url() {
+        let expected_message = MessageBuilder::builder(Payload::text("click me"))
+            .color(Color::Yellow)
+            .bold(true)
+            .click_open_url("http://minecraft.net")
+            .build();
 
-#[test]
-fn test_serialize_click_run_command() {
-    let message = MessageBuilder::builder(Payload::text("click me"))
-        .color(Color::LightPurple)
-        .italic(true)
-        .click_run_command("/help")
-        .build();
+        assert_eq!(
+            expected_message,
+            Message::from_json(include_str!("../test/chat/click_open_url.json")).unwrap()
+        );
+    }
 
-    assert_eq!(
-        message.to_json().unwrap(),
-        include_str!("../test/chat/click_run_command.json")
-    );
-}
+    #[test]
+    fn test_serialize_click_run_command() {
+        let message = MessageBuilder::builder(Payload::text("click me"))
+            .color(Color::LightPurple)
+            .italic(true)
+            .click_run_command("/help")
+            .build();
 
-#[test]
-fn test_deserialize_click_run_command() {
-    let expected_message = MessageBuilder::builder(Payload::text("click me"))
-        .color(Color::LightPurple)
-        .italic(true)
-        .click_run_command("/help")
-        .build();
+        assert_eq!(
+            message.to_json().unwrap(),
+            include_str!("../test/chat/click_run_command.json")
+        );
+    }
 
-    assert_eq!(
-        expected_message,
-        Message::from_json(include_str!("../test/chat/click_run_command.json")).unwrap()
-    );
-}
+    #[test]
+    fn test_deserialize_click_run_command() {
+        let expected_message = MessageBuilder::builder(Payload::text("click me"))
+            .color(Color::LightPurple)
+            .italic(true)
+            .click_run_command("/help")
+            .build();
 
-#[test]
-fn test_serialize_click_suggest_command() {
-    let message = MessageBuilder::builder(Payload::text("click me"))
-        .color(Color::Blue)
-        .obfuscated(true)
-        .click_suggest_command("/help")
-        .build();
+        assert_eq!(
+            expected_message,
+            Message::from_json(include_str!("../test/chat/click_run_command.json")).unwrap()
+        );
+    }
 
-    assert_eq!(
-        message.to_json().unwrap(),
-        include_str!("../test/chat/click_suggest_command.json")
-    );
-}
+    #[test]
+    fn test_serialize_click_suggest_command() {
+        let message = MessageBuilder::builder(Payload::text("click me"))
+            .color(Color::Blue)
+            .obfuscated(true)
+            .click_suggest_command("/help")
+            .build();
 
-#[test]
-fn test_deserialize_click_suggest_command() {
-    let expected_message = MessageBuilder::builder(Payload::text("click me"))
-        .color(Color::Blue)
-        .obfuscated(true)
-        .click_suggest_command("/help")
-        .build();
+        assert_eq!(
+            message.to_json().unwrap(),
+            include_str!("../test/chat/click_suggest_command.json")
+        );
+    }
 
-    assert_eq!(
-        expected_message,
-        Message::from_json(include_str!("../test/chat/click_suggest_command.json")).unwrap()
-    );
-}
+    #[test]
+    fn test_deserialize_click_suggest_command() {
+        let expected_message = MessageBuilder::builder(Payload::text("click me"))
+            .color(Color::Blue)
+            .obfuscated(true)
+            .click_suggest_command("/help")
+            .build();
 
-#[test]
-fn test_serialize_click_change_page() {
-    let message = MessageBuilder::builder(Payload::text("click me"))
-        .color(Color::DarkGray)
-        .underlined(true)
-        .click_change_page("2")
-        .build();
+        assert_eq!(
+            expected_message,
+            Message::from_json(include_str!("../test/chat/click_suggest_command.json")).unwrap()
+        );
+    }
 
-    assert_eq!(
-        message.to_json().unwrap(),
-        include_str!("../test/chat/click_change_page.json")
-    );
-}
+    #[test]
+    fn test_serialize_click_change_page() {
+        let message = MessageBuilder::builder(Payload::text("click me"))
+            .color(Color::DarkGray)
+            .underlined(true)
+            .click_change_page("2")
+            .build();
 
-#[test]
-fn test_deserialize_click_change_page() {
-    let expected_message = MessageBuilder::builder(Payload::text("click me"))
-        .color(Color::DarkGray)
-        .underlined(true)
-        .click_change_page("2")
-        .build();
+        assert_eq!(
+            message.to_json().unwrap(),
+            include_str!("../test/chat/click_change_page.json")
+        );
+    }
 
-    assert_eq!(
-        expected_message,
-        Message::from_json(include_str!("../test/chat/click_change_page.json")).unwrap()
-    );
-}
+    #[test]
+    fn test_deserialize_click_change_page() {
+        let expected_message = MessageBuilder::builder(Payload::text("click me"))
+            .color(Color::DarkGray)
+            .underlined(true)
+            .click_change_page("2")
+            .build();
 
-#[test]
-fn test_serialize_hover_show_text() {
-    let message = MessageBuilder::builder(Payload::text("hover at me"))
-        .color(Color::DarkPurple)
-        .bold(true)
-        .hover_show_text("Herobrine behind you!")
-        .build();
+        assert_eq!(
+            expected_message,
+            Message::from_json(include_str!("../test/chat/click_change_page.json")).unwrap()
+        );
+    }
 
-    assert_eq!(
-        message.to_json().unwrap(),
-        include_str!("../test/chat/hover_show_text.json")
-    );
-}
+    #[test]
+    fn test_serialize_hover_show_text() {
+        let message = MessageBuilder::builder(Payload::text("hover at me"))
+            .color(Color::DarkPurple)
+            .bold(true)
+            .hover_show_text("Herobrine behind you!")
+            .build();
 
-#[test]
-fn test_deserialize_hover_show_text() {
-    let expected_message = MessageBuilder::builder(Payload::text("hover at me"))
-        .color(Color::DarkPurple)
-        .bold(true)
-        .hover_show_text("Herobrine behind you!")
-        .build();
+        assert_eq!(
+            message.to_json().unwrap(),
+            include_str!("../test/chat/hover_show_text.json")
+        );
+    }
 
-    assert_eq!(
-        expected_message,
-        Message::from_json(include_str!("../test/chat/hover_show_text.json")).unwrap()
-    );
-}
+    #[test]
+    fn test_deserialize_hover_show_text() {
+        let expected_message = MessageBuilder::builder(Payload::text("hover at me"))
+            .color(Color::DarkPurple)
+            .bold(true)
+            .hover_show_text("Herobrine behind you!")
+            .build();
 
-#[test]
-fn test_serialize_hover_show_item() {
-    let message = MessageBuilder::builder(Payload::text("hover at me"))
-        .color(Color::DarkRed)
-        .italic(true)
-        .hover_show_item("{\"id\":\"stone\",\"Count\":1}")
-        .build();
+        assert_eq!(
+            expected_message,
+            Message::from_json(include_str!("../test/chat/hover_show_text.json")).unwrap()
+        );
+    }
 
-    assert_eq!(
-        message.to_json().unwrap(),
-        include_str!("../test/chat/hover_show_item.json")
-    );
-}
+    #[test]
+    fn test_serialize_hover_show_item() {
+        let message = MessageBuilder::builder(Payload::text("hover at me"))
+            .color(Color::DarkRed)
+            .italic(true)
+            .hover_show_item("{\"id\":\"stone\",\"Count\":1}")
+            .build();
 
-#[test]
-fn test_deserialize_hover_show_item() {
-    let expected_message = MessageBuilder::builder(Payload::text("hover at me"))
-        .color(Color::DarkRed)
-        .italic(true)
-        .hover_show_item("{\"id\":\"stone\",\"Count\":1}")
-        .build();
+        assert_eq!(
+            message.to_json().unwrap(),
+            include_str!("../test/chat/hover_show_item.json")
+        );
+    }
 
-    assert_eq!(
-        expected_message,
-        Message::from_json(include_str!("../test/chat/hover_show_item.json")).unwrap()
-    );
-}
+    #[test]
+    fn test_deserialize_hover_show_item() {
+        let expected_message = MessageBuilder::builder(Payload::text("hover at me"))
+            .color(Color::DarkRed)
+            .italic(true)
+            .hover_show_item("{\"id\":\"stone\",\"Count\":1}")
+            .build();
 
-#[test]
-fn test_serialize_hover_show_entity() {
-    let message = MessageBuilder::builder(Payload::text("hover at me"))
-        .color(Color::DarkAqua)
-        .obfuscated(true)
-        .hover_show_entity("{\"id\":\"7e4a61cc-83fa-4441-a299-bf69786e610a\",\"type\":\"minecraft:zombie\",\"name\":\"Zombie}\"")
-        .build();
+        assert_eq!(
+            expected_message,
+            Message::from_json(include_str!("../test/chat/hover_show_item.json")).unwrap()
+        );
+    }
 
-    assert_eq!(
-        message.to_json().unwrap(),
-        include_str!("../test/chat/hover_show_entity.json")
-    );
-}
+    #[test]
+    fn test_serialize_hover_show_entity() {
+        let message = MessageBuilder::builder(Payload::text("hover at me"))
+            .color(Color::DarkAqua)
+            .obfuscated(true)
+            .hover_show_entity("{\"id\":\"7e4a61cc-83fa-4441-a299-bf69786e610a\",\"type\":\"minecraft:zombie\",\"name\":\"Zombie}\"")
+            .build();
 
-#[test]
-fn test_deserialize_hover_show_entity() {
-    let expected_message = MessageBuilder::builder(Payload::text("hover at me"))
-        .color(Color::DarkAqua)
-        .obfuscated(true)
-        .hover_show_entity("{\"id\":\"7e4a61cc-83fa-4441-a299-bf69786e610a\",\"type\":\"minecraft:zombie\",\"name\":\"Zombie}\"")
-        .build();
+        assert_eq!(
+            message.to_json().unwrap(),
+            include_str!("../test/chat/hover_show_entity.json")
+        );
+    }
 
-    assert_eq!(
-        expected_message,
-        Message::from_json(include_str!("../test/chat/hover_show_entity.json")).unwrap()
-    );
-}
+    #[test]
+    fn test_deserialize_hover_show_entity() {
+        let expected_message = MessageBuilder::builder(Payload::text("hover at me"))
+            .color(Color::DarkAqua)
+            .obfuscated(true)
+            .hover_show_entity("{\"id\":\"7e4a61cc-83fa-4441-a299-bf69786e610a\",\"type\":\"minecraft:zombie\",\"name\":\"Zombie}\"")
+            .build();
 
-#[test]
-fn test_serialize_hex_color() {
-    let message = MessageBuilder::builder(Payload::text("Hello"))
-        .color(Color::Hex("#ffffff".into()))
-        .build();
+        assert_eq!(
+            expected_message,
+            Message::from_json(include_str!("../test/chat/hover_show_entity.json")).unwrap()
+        );
+    }
 
-    assert_eq!(
-        message.to_json().unwrap(),
-        include_str!("../test/chat/hex_color.json")
-    );
-}
+    #[test]
+    fn test_serialize_hex_color() {
+        let message = MessageBuilder::builder(Payload::text("Hello"))
+            .color(Color::Hex("#ffffff".into()))
+            .build();
 
-#[test]
-fn test_deserialize_hex_color() {
-    let expected_message = MessageBuilder::builder(Payload::text("Hello"))
-        .color(Color::Hex("#ffffff".into()))
-        .build();
+        assert_eq!(
+            message.to_json().unwrap(),
+            include_str!("../test/chat/hex_color.json")
+        );
+    }
 
-    assert_eq!(
-        Message::from_json(include_str!("../test/chat/hex_color.json")).unwrap(),
-        expected_message
-    );
+    #[test]
+    fn test_deserialize_hex_color() {
+        let expected_message = MessageBuilder::builder(Payload::text("Hello"))
+            .color(Color::Hex("#ffffff".into()))
+            .build();
+
+        assert_eq!(
+            Message::from_json(include_str!("../test/chat/hex_color.json")).unwrap(),
+            expected_message
+        );
+    }
 }
