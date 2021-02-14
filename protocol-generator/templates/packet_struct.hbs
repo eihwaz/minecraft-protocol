@@ -1,0 +1,19 @@
+pub struct {{name}} {
+{{~#each fields as |f|}}
+    {{~#if f.var_int}}
+    #[packet(with = "var_int")]{{/if}}
+    {{~#if f.var_long}}
+    #[packet(with = "var_long")]{{/if}}
+    {{~#if f.rest}}
+    #[packet(with = "rest")]{{/if}}
+    {{~#if f.hyphenated}}
+    #[packet(with = "uuid_hyp_str")]{{/if}}
+    {{~#if f.max_length}}
+    #[packet(max_length = {{f.max_length}})]{{/if}}
+    {{~#if (ne f.type "RefType")}}
+    pub {{f.name}}: {{f.type}},
+    {{~else}}
+    pub {{f.name}}: {{f.ref_name}},
+    {{~/if}}
+{{~/each}}
+}
