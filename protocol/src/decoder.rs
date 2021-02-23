@@ -5,7 +5,7 @@ use num_traits::FromPrimitive;
 use std::io::Read;
 use uuid::Uuid;
 
-trait Decoder {
+pub trait Decoder {
     type Output;
 
     fn decode<R: Read>(reader: &mut R) -> Result<Self::Output, DecodeError>;
@@ -109,11 +109,27 @@ impl Decoder for u8 {
     }
 }
 
+impl Decoder for i16 {
+    type Output = Self;
+
+    fn decode<R: Read>(reader: &mut R) -> Result<Self::Output, DecodeError> {
+        Ok(reader.read_i16::<BigEndian>()?)
+    }
+}
+
 impl Decoder for i32 {
     type Output = Self;
 
     fn decode<R: Read>(reader: &mut R) -> Result<Self::Output, DecodeError> {
         Ok(reader.read_i32::<BigEndian>()?)
+    }
+}
+
+impl Decoder for u16 {
+    type Output = Self;
+
+    fn decode<R: Read>(reader: &mut R) -> Result<Self::Output, DecodeError> {
+        Ok(reader.read_u16::<BigEndian>()?)
     }
 }
 

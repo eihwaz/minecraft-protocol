@@ -5,7 +5,7 @@ use num_traits::ToPrimitive;
 use std::io::Write;
 use uuid::Uuid;
 
-trait Encoder {
+pub trait Encoder {
     fn encode<W: Write>(&self, writer: &mut W) -> Result<(), EncodeError>;
 }
 
@@ -103,9 +103,21 @@ impl Encoder for u8 {
     }
 }
 
+impl Encoder for i16 {
+    fn encode<W: Write>(&self, writer: &mut W) -> Result<(), EncodeError> {
+        Ok(writer.write_i16::<BigEndian>(*self)?)
+    }
+}
+
 impl Encoder for i32 {
     fn encode<W: Write>(&self, writer: &mut W) -> Result<(), EncodeError> {
         Ok(writer.write_i32::<BigEndian>(*self)?)
+    }
+}
+
+impl Encoder for u16 {
+    fn encode<W: Write>(&self, writer: &mut W) -> Result<(), EncodeError> {
+        Ok(writer.write_u16::<BigEndian>(*self)?)
     }
 }
 
