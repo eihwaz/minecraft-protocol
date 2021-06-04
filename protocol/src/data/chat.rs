@@ -339,6 +339,7 @@ impl Message {
 
 impl_json_encoder_decoder!(Message);
 
+#[derive(Debug)]
 pub struct MessageBuilder {
     current: Message,
     root: Option<Message>,

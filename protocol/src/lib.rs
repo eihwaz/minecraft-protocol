@@ -1,6 +1,8 @@
 //! This crate implements Minecraft protocol.
 //!
 //! Information about protocol can be found at https://wiki.vg/Protocol.
+#![warn(missing_debug_implementations)]
+
 pub mod data;
 pub mod decoder;
 pub mod encoder;

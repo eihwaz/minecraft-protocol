@@ -6,12 +6,14 @@ use crate::decoder::Decoder;
 use crate::error::DecodeError;
 use minecraft_protocol_derive::{Decoder, Encoder};
 
+#[derive(Debug)]
 pub enum LoginServerBoundPacket {
     LoginStart(LoginStart),
     EncryptionResponse(EncryptionResponse),
     LoginPluginResponse(LoginPluginResponse),
 }
 
+#[derive(Debug)]
 pub enum LoginClientBoundPacket {
     LoginDisconnect(LoginDisconnect),
     EncryptionRequest(EncryptionRequest),
