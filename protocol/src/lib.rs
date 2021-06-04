@@ -7,6 +7,7 @@ pub mod data;
 pub mod decoder;
 pub mod encoder;
 pub mod error;
+pub mod packet;
 pub mod version;
 
 /// Protocol limits maximum string length.
