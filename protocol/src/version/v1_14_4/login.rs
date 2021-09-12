@@ -1,9 +1,9 @@
-use crate::chat::Message;
-use crate::DecodeError;
-use crate::Decoder;
 use std::io::Read;
 use uuid::Uuid;
 
+use crate::data::chat::Message;
+use crate::decoder::Decoder;
+use crate::error::DecodeError;
 use minecraft_protocol_derive::Packet;
 
 pub enum LoginServerBoundPacket {
@@ -244,9 +244,8 @@ impl LoginPluginRequest {
 #[cfg(test)]
 mod tests {
     use crate::chat::{Message, Payload};
-    use crate::login::{EncryptionRequest, LoginDisconnect, LoginPluginRequest, SetCompression};
-    use crate::login::{EncryptionResponse, LoginPluginResponse};
-    use crate::login::{LoginStart, LoginSuccess};
+    use crate::data::chat::Payload;
+    use crate::version::v1_14_4::login::*;
     use crate::Decoder;
     use crate::Encoder;
     use std::io::Cursor;
@@ -263,14 +262,14 @@ mod tests {
 
         assert_eq!(
             vec,
-            include_bytes!("../test/packet/login/login_start.dat").to_vec()
+            include_bytes!("../../../test/packet/login/login_start.dat").to_vec()
         );
     }
 
     #[test]
     fn test_login_start_packet_decode() {
         let mut cursor =
-            Cursor::new(include_bytes!("../test/packet/login/login_start.dat").to_vec());
+            Cursor::new(include_bytes!("../../../test/packet/login/login_start.dat").to_vec());
         let login_start = LoginStart::decode(&mut cursor).unwrap();
 
         assert_eq!(login_start.name, String::from("Username"));
@@ -288,14 +287,15 @@ mod tests {
 
         assert_eq!(
             vec,
-            include_bytes!("../test/packet/login/encryption_response.dat").to_vec()
+            include_bytes!("../../../test/packet/login/encryption_response.dat").to_vec()
         );
     }
 
     #[test]
     fn test_encryption_response_decode() {
-        let mut cursor =
-            Cursor::new(include_bytes!("../test/packet/login/encryption_response.dat").to_vec());
+        let mut cursor = Cursor::new(
+            include_bytes!("../../../test/packet/login/encryption_response.dat").to_vec(),
+        );
         let encryption_response = EncryptionResponse::decode(&mut cursor).unwrap();
 
         assert_eq!(
@@ -318,14 +318,15 @@ mod tests {
 
         assert_eq!(
             vec,
-            include_bytes!("../test/packet/login/login_plugin_response.dat").to_vec()
+            include_bytes!("../../../test/packet/login/login_plugin_response.dat").to_vec()
         );
     }
 
     #[test]
     fn test_login_plugin_response_decode() {
-        let mut cursor =
-            Cursor::new(include_bytes!("../test/packet/login/login_plugin_response.dat").to_vec());
+        let mut cursor = Cursor::new(
+            include_bytes!("../../../test/packet/login/login_plugin_response.dat").to_vec(),
+        );
         let login_plugin_response = LoginPluginResponse::decode(&mut cursor).unwrap();
 
         assert_eq!(login_plugin_response.message_id, 55);
@@ -347,14 +348,14 @@ mod tests {
 
         assert_eq!(
             vec,
-            include_bytes!("../test/packet/login/login_disconnect.dat").to_vec()
+            include_bytes!("../../../test/packet/login/login_disconnect.dat").to_vec()
         );
     }
 
     #[test]
     fn test_login_disconnect_decode() {
         let mut cursor =
-            Cursor::new(include_bytes!("../test/packet/login/login_disconnect.dat").to_vec());
+            Cursor::new(include_bytes!("../../../test/packet/login/login_disconnect.dat").to_vec());
         let login_disconnect = LoginDisconnect::decode(&mut cursor).unwrap();
 
         assert_eq!(
@@ -376,14 +377,15 @@ mod tests {
 
         assert_eq!(
             vec,
-            include_bytes!("../test/packet/login/encryption_request.dat").to_vec()
+            include_bytes!("../../../test/packet/login/encryption_request.dat").to_vec()
         );
     }
 
     #[test]
     fn test_encryption_request_decode() {
-        let mut cursor =
-            Cursor::new(include_bytes!("../test/packet/login/encryption_request.dat").to_vec());
+        let mut cursor = Cursor::new(
+            include_bytes!("../../../test/packet/login/encryption_request.dat").to_vec(),
+        );
         let encryption_request = EncryptionRequest::decode(&mut cursor).unwrap();
 
         assert_eq!(encryption_request.server_id, String::from("ServerID"));
@@ -406,14 +408,14 @@ mod tests {
 
         assert_eq!(
             vec,
-            include_bytes!("../test/packet/login/login_success.dat").to_vec()
+            include_bytes!("../../../test/packet/login/login_success.dat").to_vec()
         );
     }
 
     #[test]
     fn test_login_success_decode() {
         let mut cursor =
-            Cursor::new(include_bytes!("../test/packet/login/login_success.dat").to_vec());
+            Cursor::new(include_bytes!("../../../test/packet/login/login_success.dat").to_vec());
         let login_success = LoginSuccess::decode(&mut cursor).unwrap();
 
         assert_eq!(login_success.username, String::from("Username"));
@@ -433,14 +435,15 @@ mod tests {
 
         assert_eq!(
             vec,
-            include_bytes!("../test/packet/login/login_set_compression.dat").to_vec()
+            include_bytes!("../../../test/packet/login/login_set_compression.dat").to_vec()
         );
     }
 
     #[test]
     fn test_set_compression_decode() {
-        let mut cursor =
-            Cursor::new(include_bytes!("../test/packet/login/login_set_compression.dat").to_vec());
+        let mut cursor = Cursor::new(
+            include_bytes!("../../../test/packet/login/login_set_compression.dat").to_vec(),
+        );
         let set_compression = SetCompression::decode(&mut cursor).unwrap();
 
         assert_eq!(set_compression.threshold, 1);
@@ -459,14 +462,15 @@ mod tests {
 
         assert_eq!(
             vec,
-            include_bytes!("../test/packet/login/login_plugin_request.dat").to_vec()
+            include_bytes!("../../../test/packet/login/login_plugin_request.dat").to_vec()
         );
     }
 
     #[test]
     fn test_login_plugin_request_decode() {
-        let mut cursor =
-            Cursor::new(include_bytes!("../test/packet/login/login_plugin_request.dat").to_vec());
+        let mut cursor = Cursor::new(
+            include_bytes!("../../../test/packet/login/login_plugin_request.dat").to_vec(),
+        );
         let login_plugin_request = LoginPluginRequest::decode(&mut cursor).unwrap();
 
         assert_eq!(login_plugin_request.message_id, 55);

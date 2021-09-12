@@ -1,10 +1,6 @@
-use serde::{Deserialize, Serialize};
-use uuid::Uuid;
-
-use crate::chat::Message;
-use crate::impl_json_encoder_decoder;
-use crate::DecodeError;
-use crate::Decoder;
+use crate::data::server_status::*;
+use crate::decoder::Decoder;
+use crate::error::DecodeError;
 use minecraft_protocol_derive::Packet;
 use std::io::Read;
 
@@ -74,38 +70,10 @@ impl PingResponse {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug)]
-pub struct ServerStatus {
-    pub version: ServerVersion,
-    pub players: OnlinePlayers,
-    pub description: Message,
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-pub struct ServerVersion {
-    pub name: String,
-    pub protocol: u32,
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-pub struct OnlinePlayers {
-    pub max: u32,
-    pub online: u32,
-    pub sample: Vec<OnlinePlayer>,
-}
-
-#[derive(Serialize, Deserialize, Debug, Eq, PartialEq)]
-pub struct OnlinePlayer {
-    pub name: String,
-    pub id: Uuid,
-}
-
 #[derive(Packet, Debug)]
 pub struct StatusResponse {
     pub server_status: ServerStatus,
 }
-
-impl_json_encoder_decoder!(ServerStatus);
 
 impl StatusResponse {
     pub fn new(server_status: ServerStatus) -> StatusClientBoundPacket {
@@ -118,10 +86,8 @@ impl StatusResponse {
 #[cfg(test)]
 mod tests {
     use crate::chat::{Message, Payload};
-    use crate::status::{
-        OnlinePlayer, OnlinePlayers, PingRequest, PingResponse, ServerStatus, ServerVersion,
-        StatusResponse,
-    };
+    use crate::data::chat::{Message, Payload};
+    use crate::version::v1_14_4::status::*;
     use crate::Decoder;
     use crate::Encoder;
     use std::io::Cursor;
@@ -138,14 +104,14 @@ mod tests {
 
         assert_eq!(
             vec,
-            include_bytes!("../test/packet/status/ping_request.dat").to_vec()
+            include_bytes!("../../../test/packet/status/ping_request.dat").to_vec()
         );
     }
 
     #[test]
     fn test_status_ping_request_decode() {
         let mut cursor =
-            Cursor::new(include_bytes!("../test/packet/status/ping_request.dat").to_vec());
+            Cursor::new(include_bytes!("../../../test/packet/status/ping_request.dat").to_vec());
         let ping_request = PingRequest::decode(&mut cursor).unwrap();
 
         assert_eq!(ping_request.time, 1577735845610);
@@ -162,14 +128,14 @@ mod tests {
 
         assert_eq!(
             vec,
-            include_bytes!("../test/packet/status/ping_response.dat").to_vec()
+            include_bytes!("../../../test/packet/status/ping_response.dat").to_vec()
         );
     }
 
     #[test]
     fn test_status_ping_response_decode() {
         let mut cursor =
-            Cursor::new(include_bytes!("../test/packet/status/ping_response.dat").to_vec());
+            Cursor::new(include_bytes!("../../../test/packet/status/ping_response.dat").to_vec());
         let ping_response = PingResponse::decode(&mut cursor).unwrap();
 
         assert_eq!(ping_response.time, 1577735845610);
@@ -206,14 +172,14 @@ mod tests {
 
         assert_eq!(
             vec,
-            include_bytes!("../test/packet/status/status_response.dat").to_vec()
+            include_bytes!("../../../test/packet/status/status_response.dat").to_vec()
         );
     }
 
     #[test]
     fn test_status_response_decode() {
         let mut cursor =
-            Cursor::new(include_bytes!("../test/packet/status/status_response.dat").to_vec());
+            Cursor::new(include_bytes!("../../../test/packet/status/status_response.dat").to_vec());
         let status_response = StatusResponse::decode(&mut cursor).unwrap();
         let server_status = status_response.server_status;
 

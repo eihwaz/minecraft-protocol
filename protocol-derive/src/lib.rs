@@ -39,7 +39,7 @@ fn impl_encoder_trait(name: &Ident, fields: &Fields) -> TokenStream2 {
         // This is special case because max length are used only for strings.
         if let Some(max_length) = parsed_meta.max_length {
             return quote! {
-                crate::EncoderWriteExt::write_string(writer, &self.#name, #max_length)?;
+                crate::encoder::EncoderWriteExt::write_string(writer, &self.#name, #max_length)?;
             };
         }
 
@@ -47,14 +47,14 @@ fn impl_encoder_trait(name: &Ident, fields: &Fields) -> TokenStream2 {
         let module_ident = Ident::new(&module, Span::call_site());
 
         quote! {
-            crate::#module_ident::encode(&self.#name, writer)?;
+            crate::encoder::#module_ident::encode(&self.#name, writer)?;
         }
     });
 
     quote! {
         #[automatically_derived]
-        impl crate::Encoder for #name {
-            fn encode<W: std::io::Write>(&self, writer: &mut W) -> Result<(), crate::EncodeError> {
+        impl crate::encoder::Encoder for #name {
+            fn encode<W: std::io::Write>(&self, writer: &mut W) -> Result<(), crate::error::EncodeError> {
                 #encode
 
                 Ok(())
@@ -74,7 +74,7 @@ fn impl_decoder_trait(name: &Ident, fields: &Fields) -> TokenStream2 {
         // This is special case because max length are used only for strings.
         if let Some(max_length) = parsed_meta.max_length {
             return quote! {
-                let #name = crate::DecoderReadExt::read_string(reader, #max_length)?;
+                let #name = crate::decoder::DecoderReadExt::read_string(reader, #max_length)?;
             };
         }
 
@@ -83,12 +83,12 @@ fn impl_decoder_trait(name: &Ident, fields: &Fields) -> TokenStream2 {
                 let module_ident = Ident::new(&module, Span::call_site());
 
                 quote! {
-                    let #name = crate::#module_ident::decode(reader)?;
+                    let #name = crate::decoder::#module_ident::decode(reader)?;
                 }
             }
             None => {
                 quote! {
-                    let #name = <#ty as crate::Decoder>::decode(reader)?;
+                    let #name = <#ty as crate::decoder::Decoder>::decode(reader)?;
                 }
             }
         }
@@ -104,10 +104,10 @@ fn impl_decoder_trait(name: &Ident, fields: &Fields) -> TokenStream2 {
 
     quote! {
         #[automatically_derived]
-        impl crate::Decoder for #name {
+        impl crate::decoder::Decoder for #name {
             type Output = Self;
 
-            fn decode<R: std::io::Read>(reader: &mut R) -> Result<Self::Output, crate::DecodeError> {
+            fn decode<R: std::io::Read>(reader: &mut R) -> Result<Self::Output, crate::error::DecodeError> {
                 #decode
 
                 Ok(#name {

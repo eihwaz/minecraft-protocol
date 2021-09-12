@@ -6,7 +6,7 @@
 //! ## Serialize
 //!
 //! ```
-//! use minecraft_protocol::chat::{Payload, Color, MessageBuilder};
+//! use minecraft_protocol::data::chat::{MessageBuilder, Payload, Color};
 //!
 //! let message = MessageBuilder::builder(Payload::text("Hello"))
 //!    .color(Color::Yellow)
@@ -25,7 +25,7 @@
 //! ## Deserialize
 //!
 //! ```
-//! use minecraft_protocol::chat::{MessageBuilder, Color, Payload, Message};
+//! use minecraft_protocol::data::chat::{MessageBuilder, Payload, Message, Color};
 //!
 //! let json = r#"
 //! {
@@ -93,7 +93,7 @@ pub enum Color {
     /// # Examples
     ///
     /// ```
-    /// use minecraft_protocol::chat::Color;
+    /// use minecraft_protocol::data::chat::Color;
     ///
     /// let color = Color::Hex("#f98aff".into());
     /// ```

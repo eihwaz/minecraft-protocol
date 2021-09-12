@@ -1,9 +1,9 @@
 use num_derive::{FromPrimitive, ToPrimitive};
 
-use crate::chat::Message;
+use crate::data::chat::Message;
+use crate::decoder::Decoder;
+use crate::error::DecodeError;
 use crate::impl_enum_encoder_decoder;
-use crate::DecodeError;
-use crate::Decoder;
 use minecraft_protocol_derive::Packet;
 use nbt::CompoundTag;
 use std::io::Read;
@@ -252,10 +252,9 @@ impl GameDisconnect {
 #[cfg(test)]
 mod tests {
     use crate::chat::{Message, Payload};
-    use crate::game::{
-        ChunkData, ClientBoundChatMessage, ClientBoundKeepAlive, GameDisconnect, GameMode,
-        JoinGame, MessagePosition, ServerBoundChatMessage, ServerBoundKeepAlive,
-    };
+    use crate::data::chat::Payload;
+    use crate::error::{DecodeError, EncodeError};
+    use crate::version::v1_14_4::game::*;
     use crate::{DecodeError, Encoder, EncoderWriteExt, STRING_MAX_LENGTH};
     use crate::{Decoder, EncodeError};
     use nbt::CompoundTag;
@@ -272,14 +271,14 @@ mod tests {
 
         assert_eq!(
             vec,
-            include_bytes!("../test/packet/game/server_bound_chat_message.dat").to_vec()
+            include_bytes!("../../../test/packet/game/server_bound_chat_message.dat").to_vec()
         );
     }
 
     #[test]
     fn test_server_bound_chat_message_decode() {
         let mut cursor = Cursor::new(
-            include_bytes!("../test/packet/game/server_bound_chat_message.dat").to_vec(),
+            include_bytes!("../../../test/packet/game/server_bound_chat_message.dat").to_vec(),
         );
         let chat_message = ServerBoundChatMessage::decode(&mut cursor).unwrap();
 
@@ -342,14 +341,14 @@ mod tests {
 
         assert_eq!(
             vec,
-            include_bytes!("../test/packet/game/client_bound_chat_message.dat").to_vec()
+            include_bytes!("../../../test/packet/game/client_bound_chat_message.dat").to_vec()
         );
     }
 
     #[test]
     fn test_client_bound_chat_message_decode() {
         let mut cursor = Cursor::new(
-            include_bytes!("../test/packet/game/client_bound_chat_message.dat").to_vec(),
+            include_bytes!("../../../test/packet/game/client_bound_chat_message.dat").to_vec(),
         );
         let chat_message = ClientBoundChatMessage::decode(&mut cursor).unwrap();
 
@@ -370,14 +369,15 @@ mod tests {
 
         assert_eq!(
             vec,
-            include_bytes!("../test/packet/game/server_bound_keep_alive.dat").to_vec()
+            include_bytes!("../../../test/packet/game/server_bound_keep_alive.dat").to_vec()
         );
     }
 
     #[test]
     fn test_server_bound_keep_alive_decode() {
-        let mut cursor =
-            Cursor::new(include_bytes!("../test/packet/game/server_bound_keep_alive.dat").to_vec());
+        let mut cursor = Cursor::new(
+            include_bytes!("../../../test/packet/game/server_bound_keep_alive.dat").to_vec(),
+        );
         let keep_alive = ServerBoundKeepAlive::decode(&mut cursor).unwrap();
 
         assert_eq!(keep_alive.id, 31122019);
@@ -392,14 +392,15 @@ mod tests {
 
         assert_eq!(
             vec,
-            include_bytes!("../test/packet/game/client_bound_keep_alive.dat").to_vec()
+            include_bytes!("../../../test/packet/game/client_bound_keep_alive.dat").to_vec()
         );
     }
 
     #[test]
     fn test_client_bound_keep_alive_decode() {
-        let mut cursor =
-            Cursor::new(include_bytes!("../test/packet/game/client_bound_keep_alive.dat").to_vec());
+        let mut cursor = Cursor::new(
+            include_bytes!("../../../test/packet/game/client_bound_keep_alive.dat").to_vec(),
+        );
         let keep_alive = ClientBoundKeepAlive::decode(&mut cursor).unwrap();
 
         assert_eq!(keep_alive.id, 240714);
@@ -422,13 +423,14 @@ mod tests {
 
         assert_eq!(
             vec,
-            include_bytes!("../test/packet/game/join_game.dat").to_vec()
+            include_bytes!("../../../test/packet/game/join_game.dat").to_vec()
         );
     }
 
     #[test]
     fn test_join_game_decode() {
-        let mut cursor = Cursor::new(include_bytes!("../test/packet/game/join_game.dat").to_vec());
+        let mut cursor =
+            Cursor::new(include_bytes!("../../../test/packet/game/join_game.dat").to_vec());
         let join_game = JoinGame::decode(&mut cursor).unwrap();
 
         assert_eq!(join_game.entity_id, 27);
@@ -457,13 +459,14 @@ mod tests {
 
         assert_eq!(
             vec,
-            include_bytes!("../test/packet/game/chunk_data.dat").to_vec()
+            include_bytes!("../../../test/packet/game/chunk_data.dat").to_vec()
         );
     }
 
     #[test]
     fn test_chunk_data_decode() {
-        let mut cursor = Cursor::new(include_bytes!("../test/packet/game/chunk_data.dat").to_vec());
+        let mut cursor =
+            Cursor::new(include_bytes!("../../../test/packet/game/chunk_data.dat").to_vec());
         let chunk_data = ChunkData::decode(&mut cursor).unwrap();
 
         assert_eq!(chunk_data.x, -2);
@@ -486,14 +489,14 @@ mod tests {
 
         assert_eq!(
             vec,
-            include_bytes!("../test/packet/game/game_disconnect.dat").to_vec()
+            include_bytes!("../../../test/packet/game/game_disconnect.dat").to_vec()
         );
     }
 
     #[test]
     fn test_game_disconnect_decode() {
         let mut cursor =
-            Cursor::new(include_bytes!("../test/packet/game/game_disconnect.dat").to_vec());
+            Cursor::new(include_bytes!("../../../test/packet/game/game_disconnect.dat").to_vec());
         let game_disconnect = GameDisconnect::decode(&mut cursor).unwrap();
 
         assert_eq!(
