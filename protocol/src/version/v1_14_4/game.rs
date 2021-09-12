@@ -251,12 +251,13 @@ impl GameDisconnect {
 
 #[cfg(test)]
 mod tests {
-    use crate::chat::{Message, Payload};
     use crate::data::chat::Payload;
+    use crate::decoder::Decoder;
+    use crate::encoder::Encoder;
+    use crate::encoder::EncoderWriteExt;
     use crate::error::{DecodeError, EncodeError};
     use crate::version::v1_14_4::game::*;
-    use crate::{DecodeError, Encoder, EncoderWriteExt, STRING_MAX_LENGTH};
-    use crate::{Decoder, EncodeError};
+    use crate::STRING_MAX_LENGTH;
     use nbt::CompoundTag;
     use std::io::Cursor;
 

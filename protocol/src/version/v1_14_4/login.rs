@@ -243,11 +243,10 @@ impl LoginPluginRequest {
 
 #[cfg(test)]
 mod tests {
-    use crate::chat::{Message, Payload};
     use crate::data::chat::Payload;
+    use crate::decoder::Decoder;
+    use crate::encoder::Encoder;
     use crate::version::v1_14_4::login::*;
-    use crate::Decoder;
-    use crate::Encoder;
     use std::io::Cursor;
     use uuid::Uuid;
 
