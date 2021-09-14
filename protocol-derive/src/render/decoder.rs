@@ -5,17 +5,8 @@ use quote::quote;
 use syn::Type;
 
 pub(crate) fn render_decoder_trait(name: &Ident, fields: &Vec<FieldData>) -> TokenStream2 {
-    let render_fields = fields
-        .iter()
-        .map(|f| render_field(f))
-        .flatten()
-        .collect::<TokenStream2>();
-
-    let create = fields
-        .iter()
-        .map(|f| f.name)
-        .map(|n| quote! { #n, })
-        .collect::<TokenStream2>();
+    let struct_create = render_struct_create(name, fields);
+    let render_fields = render_fields(fields);
 
     quote! {
         #[automatically_derived]
@@ -25,12 +16,28 @@ pub(crate) fn render_decoder_trait(name: &Ident, fields: &Vec<FieldData>) -> Tok
             fn decode<R: std::io::Read>(reader: &mut R) -> Result<Self::Output, crate::error::DecodeError> {
                 #render_fields
 
-                Ok(#name {
-                    #create
-                })
+                Ok(#struct_create)
             }
         }
     }
+}
+
+fn render_struct_create(name: &Ident, fields: &Vec<FieldData>) -> TokenStream2 {
+    let struct_fields = fields
+        .iter()
+        .map(|f| f.name)
+        .map(|n| quote!(#n,))
+        .collect::<TokenStream2>();
+
+    quote! {
+        #name {
+          #struct_fields
+        }
+    }
+}
+
+fn render_fields(fields: &Vec<FieldData>) -> TokenStream2 {
+    fields.iter().map(|f| render_field(f)).flatten().collect()
 }
 
 fn render_field(field: &FieldData) -> TokenStream2 {
@@ -38,11 +45,9 @@ fn render_field(field: &FieldData) -> TokenStream2 {
     let ty = field.ty;
 
     match &field.meta {
-        Some(packet_field_meta) => match packet_field_meta {
-            PacketFieldMeta::With { module } => render_with_field(name, module),
-            PacketFieldMeta::MaxLength { length } => render_max_length_field(name, *length as u16),
-        },
-        None => render_simple_field(name, ty),
+        PacketFieldMeta::With { module } => render_with_field(name, module),
+        PacketFieldMeta::MaxLength { length } => render_max_length_field(name, *length as u16),
+        PacketFieldMeta::Empty => render_simple_field(name, ty),
     }
 }
 

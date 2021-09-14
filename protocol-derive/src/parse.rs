@@ -5,14 +5,16 @@ use syn::Error as SynError;
 use syn::{Data, DeriveInput, Field, Fields, FieldsNamed, Lit, Meta, NestedMeta, Type};
 
 pub(crate) struct FieldData<'a> {
-    pub name: &'a Ident,
-    pub ty: &'a Type,
-    pub meta: Option<PacketFieldMeta>,
+    pub(crate) name: &'a Ident,
+    pub(crate) ty: &'a Type,
+    pub(crate) meta: PacketFieldMeta,
 }
 
+#[derive(Debug, Eq, PartialEq)]
 pub(crate) enum PacketFieldMeta {
     With { module: String },
     MaxLength { length: usize },
+    Empty,
 }
 
 pub(crate) fn parse_derive_input(
@@ -35,6 +37,7 @@ fn parse_fields(named_fields: &FieldsNamed) -> Result<Vec<FieldData>, ParseError
     for field in named_fields.named.iter() {
         let name = field.ident.as_ref().unwrap();
         let ty = &field.ty;
+
         let nested_metas = parse_field_nested_metas(field)?;
         let meta = parse_packet_field_meta(nested_metas)?;
 
@@ -46,18 +49,21 @@ fn parse_fields(named_fields: &FieldsNamed) -> Result<Vec<FieldData>, ParseError
 
 fn parse_packet_field_meta(
     nested_metas: Vec<NestedMeta>,
-) -> Result<Option<PacketFieldMeta>, ParseError<'static>> {
-    for nested_meta in nested_metas.iter() {
-        if let Some(module_field_module) = get_module_field_meta(nested_meta)? {
-            return Ok(Some(module_field_module));
-        }
+) -> Result<PacketFieldMeta, ParseError<'static>> {
+    let meta_parsers: Vec<fn(&NestedMeta) -> Result<PacketFieldMeta, FieldError>> =
+        vec![get_module_field_meta, get_max_length_field_meta];
 
-        if let Some(max_length_field_module) = get_max_length_field_meta(nested_meta)? {
-            return Ok(Some(max_length_field_module));
+    for nested_meta in nested_metas.iter() {
+        for meta_parser in meta_parsers.iter() {
+            let packet_field_meta = meta_parser(nested_meta)?;
+
+            if packet_field_meta != PacketFieldMeta::Empty {
+                return Ok(packet_field_meta);
+            }
         }
     }
 
-    Ok(None)
+    Ok(PacketFieldMeta::Empty)
 }
 
 fn parse_field_nested_metas(field: &Field) -> Result<Vec<NestedMeta>, ParseError<'_>> {
@@ -79,34 +85,32 @@ fn parse_field_nested_metas(field: &Field) -> Result<Vec<NestedMeta>, ParseError
     Ok(nested_metas.into_iter().flatten().collect())
 }
 
-fn get_module_field_meta(nested_meta: &NestedMeta) -> Result<Option<PacketFieldMeta>, FieldError> {
+fn get_module_field_meta(nested_meta: &NestedMeta) -> Result<PacketFieldMeta, FieldError> {
     if let NestedMeta::Meta(Meta::NameValue(named_meta)) = nested_meta {
         if matches!(&named_meta.path, path if path.is_ident("with")) {
             return match &named_meta.lit {
-                Lit::Str(lit_str) => Ok(Some(PacketFieldMeta::With {
+                Lit::Str(lit_str) => Ok(PacketFieldMeta::With {
                     module: lit_str.value(),
-                })),
+                }),
                 _ => Err(FieldError::AttributeValueNotString),
             };
         }
     }
 
-    Ok(None)
+    Ok(PacketFieldMeta::Empty)
 }
 
-fn get_max_length_field_meta(
-    nested_meta: &NestedMeta,
-) -> Result<Option<PacketFieldMeta>, FieldError> {
+fn get_max_length_field_meta(nested_meta: &NestedMeta) -> Result<PacketFieldMeta, FieldError> {
     if let NestedMeta::Meta(Meta::NameValue(named_meta)) = nested_meta {
         if matches!(&named_meta.path, path if path.is_ident("max_length")) {
             return match &named_meta.lit {
-                Lit::Int(lit_int) => Ok(Some(PacketFieldMeta::MaxLength {
+                Lit::Int(lit_int) => Ok(PacketFieldMeta::MaxLength {
                     length: lit_int.base10_parse::<usize>()?,
-                })),
+                }),
                 _ => Err(FieldError::AttributeValueNotInteger),
             };
         }
     }
 
-    Ok(None)
+    Ok(PacketFieldMeta::Empty)
 }

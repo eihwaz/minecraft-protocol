@@ -4,11 +4,7 @@ use proc_macro2::{Ident, Span};
 use quote::quote;
 
 pub(crate) fn render_encoder_trait(name: &Ident, fields: &Vec<FieldData>) -> TokenStream2 {
-    let render_fields = fields
-        .iter()
-        .map(|f| render_field(f))
-        .flatten()
-        .collect::<TokenStream2>();
+    let render_fields = render_fields(fields);
 
     quote! {
         #[automatically_derived]
@@ -22,15 +18,17 @@ pub(crate) fn render_encoder_trait(name: &Ident, fields: &Vec<FieldData>) -> Tok
     }
 }
 
+fn render_fields(fields: &Vec<FieldData>) -> TokenStream2 {
+    fields.iter().map(|f| render_field(f)).flatten().collect()
+}
+
 fn render_field(field: &FieldData) -> TokenStream2 {
     let name = field.name;
 
     match &field.meta {
-        Some(packet_field_meta) => match packet_field_meta {
-            PacketFieldMeta::With { module } => render_with_field(name, module),
-            PacketFieldMeta::MaxLength { length } => render_max_length_field(name, *length as u16),
-        },
-        None => render_simple_field(name),
+        PacketFieldMeta::With { module } => render_with_field(name, module),
+        PacketFieldMeta::MaxLength { length } => render_max_length_field(name, *length as u16),
+        PacketFieldMeta::Empty => render_simple_field(name),
     }
 }
 
