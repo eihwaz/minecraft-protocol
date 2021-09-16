@@ -4,7 +4,7 @@ use crate::data::chat::Message;
 use crate::decoder::Decoder;
 use crate::error::DecodeError;
 use crate::impl_enum_encoder_decoder;
-use minecraft_protocol_derive::Packet;
+use minecraft_protocol_derive::{Decoder, Encoder};
 use nbt::CompoundTag;
 use std::io::Read;
 
@@ -89,9 +89,9 @@ impl GameClientBoundPacket {
     }
 }
 
-#[derive(Packet, Debug)]
+#[derive(Encoder, Decoder, Debug)]
 pub struct ServerBoundChatMessage {
-    #[packet(max_length = 256)]
+    #[data_type(max_length = 256)]
     pub message: String,
 }
 
@@ -103,7 +103,7 @@ impl ServerBoundChatMessage {
     }
 }
 
-#[derive(Packet, Debug)]
+#[derive(Encoder, Decoder, Debug)]
 pub struct ClientBoundChatMessage {
     pub message: Message,
     pub position: MessagePosition,
@@ -126,15 +126,15 @@ impl ClientBoundChatMessage {
     }
 }
 
-#[derive(Packet, Debug)]
+#[derive(Encoder, Decoder, Debug)]
 pub struct JoinGame {
     pub entity_id: u32,
     pub game_mode: GameMode,
     pub dimension: i32,
     pub max_players: u8,
-    #[packet(max_length = 16)]
+    #[data_type(max_length = 16)]
     pub level_type: String,
-    #[packet(with = "var_int")]
+    #[data_type(with = "var_int")]
     pub view_distance: i32,
     pub reduced_debug_info: bool,
 }
@@ -174,7 +174,7 @@ impl JoinGame {
     }
 }
 
-#[derive(Packet)]
+#[derive(Encoder, Decoder)]
 pub struct ServerBoundKeepAlive {
     pub id: u64,
 }
@@ -187,7 +187,7 @@ impl ServerBoundKeepAlive {
     }
 }
 
-#[derive(Packet)]
+#[derive(Encoder, Decoder)]
 pub struct ClientBoundKeepAlive {
     pub id: u64,
 }
@@ -200,12 +200,12 @@ impl ClientBoundKeepAlive {
     }
 }
 
-#[derive(Packet, Debug)]
+#[derive(Encoder, Decoder, Debug)]
 pub struct ChunkData {
     pub x: i32,
     pub z: i32,
     pub full: bool,
-    #[packet(with = "var_int")]
+    #[data_type(with = "var_int")]
     pub primary_mask: i32,
     pub heights: CompoundTag,
     pub data: Vec<u8>,
@@ -236,7 +236,7 @@ impl ChunkData {
     }
 }
 
-#[derive(Packet, Debug)]
+#[derive(Encoder, Decoder, Debug)]
 pub struct GameDisconnect {
     pub reason: Message,
 }
