@@ -4,7 +4,7 @@ use uuid::Uuid;
 use crate::data::chat::Message;
 use crate::decoder::Decoder;
 use crate::error::DecodeError;
-use minecraft_protocol_derive::Packet;
+use minecraft_protocol_derive::{Decoder, Encoder};
 
 pub enum LoginServerBoundPacket {
     LoginStart(LoginStart),
@@ -102,7 +102,7 @@ impl LoginClientBoundPacket {
     }
 }
 
-#[derive(Packet, Debug)]
+#[derive(Encoder, Decoder, Debug)]
 pub struct LoginStart {
     pub name: String,
 }
@@ -115,7 +115,7 @@ impl LoginStart {
     }
 }
 
-#[derive(Packet, Debug)]
+#[derive(Encoder, Decoder, Debug)]
 pub struct EncryptionResponse {
     pub shared_secret: Vec<u8>,
     pub verify_token: Vec<u8>,
@@ -132,12 +132,12 @@ impl EncryptionResponse {
     }
 }
 
-#[derive(Packet, Debug)]
+#[derive(Encoder, Decoder, Debug)]
 pub struct LoginPluginResponse {
-    #[packet(with = "var_int")]
+    #[data_type(with = "var_int")]
     pub message_id: i32,
     pub successful: bool,
-    #[packet(with = "rest")]
+    #[data_type(with = "rest")]
     pub data: Vec<u8>,
 }
 
@@ -153,7 +153,7 @@ impl LoginPluginResponse {
     }
 }
 
-#[derive(Packet, Debug)]
+#[derive(Encoder, Decoder, Debug)]
 pub struct LoginDisconnect {
     pub reason: Message,
 }
@@ -166,9 +166,9 @@ impl LoginDisconnect {
     }
 }
 
-#[derive(Packet, Debug)]
+#[derive(Encoder, Decoder, Debug)]
 pub struct EncryptionRequest {
-    #[packet(max_length = 20)]
+    #[data_type(max_length = 20)]
     pub server_id: String,
     pub public_key: Vec<u8>,
     pub verify_token: Vec<u8>,
@@ -190,11 +190,11 @@ impl EncryptionRequest {
     }
 }
 
-#[derive(Packet, Debug)]
+#[derive(Encoder, Decoder, Debug)]
 pub struct LoginSuccess {
-    #[packet(with = "uuid_hyp_str")]
+    #[data_type(with = "uuid_hyp_str")]
     pub uuid: Uuid,
-    #[packet(max_length = 16)]
+    #[data_type(max_length = 16)]
     pub username: String,
 }
 
@@ -206,9 +206,9 @@ impl LoginSuccess {
     }
 }
 
-#[derive(Packet, Debug)]
+#[derive(Encoder, Decoder, Debug)]
 pub struct SetCompression {
-    #[packet(with = "var_int")]
+    #[data_type(with = "var_int")]
     pub threshold: i32,
 }
 
@@ -220,12 +220,12 @@ impl SetCompression {
     }
 }
 
-#[derive(Packet, Debug)]
+#[derive(Encoder, Decoder, Debug)]
 pub struct LoginPluginRequest {
-    #[packet(with = "var_int")]
+    #[data_type(with = "var_int")]
     pub message_id: i32,
     pub channel: String,
-    #[packet(with = "rest")]
+    #[data_type(with = "rest")]
     pub data: Vec<u8>,
 }
 

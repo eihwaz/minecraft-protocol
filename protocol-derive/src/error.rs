@@ -1,15 +1,12 @@
-use proc_macro2::Ident;
 use syn::Error as SynError;
 
-/// Possible errors while parsing AST.
+/// Possible errors while deriving.
 #[derive(Debug)]
-pub(crate) enum ParseError<'a> {
-    /// Parser expects a struct.
-    NotStruct {
-        name: &'a Ident,
-    },
-    /// Fields must be named.
-    UnnamedFields,
+pub(crate) enum DeriveInputParserError {
+    /// Derive attribute must be placed on a structure or enum.
+    UnsupportedData,
+    /// Data fields must be named.
+    UnnamedDataFields,
     FieldError {
         field_error: FieldError,
     },
@@ -18,32 +15,31 @@ pub(crate) enum ParseError<'a> {
 /// Possible errors while parsing field.
 #[derive(Debug)]
 pub(crate) enum FieldError {
-    /// Failed to parse field attribute.
-    BadAttributes { syn_error: SynError },
-    /// Unsupported field attributes.
-    NonListAttributes,
-    /// Attribute value must be string.
-    AttributeValueNotString,
-    /// Attribute value must be integer.
-    AttributeValueNotInteger,
+    /// Failed to parse field meta due incorrect syntax.
+    BadAttributeSyntax { syn_error: SynError },
+    /// Unsupported field attribute type.
+    UnsupportedAttribute,
+    /// Field meta has wrong value type.
+    /// For example an int was expected, but a string was supplied.
+    AttributeWrongValueType,
 }
 
-impl From<FieldError> for ParseError<'_> {
+impl From<FieldError> for DeriveInputParserError {
     fn from(field_error: FieldError) -> Self {
-        ParseError::FieldError { field_error }
+        DeriveInputParserError::FieldError { field_error }
     }
 }
 
-impl From<SynError> for ParseError<'_> {
+impl From<SynError> for DeriveInputParserError {
     fn from(syn_error: SynError) -> Self {
-        ParseError::FieldError {
-            field_error: FieldError::BadAttributes { syn_error },
+        DeriveInputParserError::FieldError {
+            field_error: FieldError::BadAttributeSyntax { syn_error },
         }
     }
 }
 
 impl From<SynError> for FieldError {
     fn from(syn_error: SynError) -> Self {
-        FieldError::BadAttributes { syn_error }
+        FieldError::BadAttributeSyntax { syn_error }
     }
 }

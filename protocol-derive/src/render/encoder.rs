@@ -1,9 +1,9 @@
-use crate::parse::{FieldData, PacketFieldMeta};
+use crate::parse::{Attribute, FieldData};
 use proc_macro2::TokenStream as TokenStream2;
 use proc_macro2::{Ident, Span};
 use quote::quote;
 
-pub(crate) fn render_encoder_trait(name: &Ident, fields: &Vec<FieldData>) -> TokenStream2 {
+pub(crate) fn render_encoder(name: &Ident, fields: &Vec<FieldData>) -> TokenStream2 {
     let render_fields = render_fields(fields);
 
     quote! {
@@ -25,10 +25,10 @@ fn render_fields(fields: &Vec<FieldData>) -> TokenStream2 {
 fn render_field(field: &FieldData) -> TokenStream2 {
     let name = field.name;
 
-    match &field.meta {
-        PacketFieldMeta::With { module } => render_with_field(name, module),
-        PacketFieldMeta::MaxLength { length } => render_max_length_field(name, *length as u16),
-        PacketFieldMeta::Empty => render_simple_field(name),
+    match &field.attribute {
+        Attribute::With { module } => render_with_field(name, module),
+        Attribute::MaxLength { length } => render_max_length_field(name, *length as u16),
+        Attribute::Empty => render_simple_field(name),
     }
 }
 

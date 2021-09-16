@@ -1,7 +1,7 @@
 use crate::data::server_status::*;
 use crate::decoder::Decoder;
 use crate::error::DecodeError;
-use minecraft_protocol_derive::Packet;
+use minecraft_protocol_derive::{Decoder, Encoder};
 use std::io::Read;
 
 pub enum StatusServerBoundPacket {
@@ -44,7 +44,7 @@ impl StatusClientBoundPacket {
     }
 }
 
-#[derive(Packet, Debug)]
+#[derive(Encoder, Decoder, Debug)]
 pub struct PingRequest {
     pub time: u64,
 }
@@ -57,7 +57,7 @@ impl PingRequest {
     }
 }
 
-#[derive(Packet, Debug)]
+#[derive(Encoder, Decoder, Debug)]
 pub struct PingResponse {
     pub time: u64,
 }
@@ -70,7 +70,7 @@ impl PingResponse {
     }
 }
 
-#[derive(Packet, Debug)]
+#[derive(Encoder, Decoder, Debug)]
 pub struct StatusResponse {
     pub server_status: ServerStatus,
 }

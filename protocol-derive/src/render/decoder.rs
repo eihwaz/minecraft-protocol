@@ -1,10 +1,10 @@
-use crate::parse::{FieldData, PacketFieldMeta};
+use crate::parse::{Attribute, FieldData};
 use proc_macro2::TokenStream as TokenStream2;
 use proc_macro2::{Ident, Span};
 use quote::quote;
 use syn::Type;
 
-pub(crate) fn render_decoder_trait(name: &Ident, fields: &Vec<FieldData>) -> TokenStream2 {
+pub(crate) fn render_decoder(name: &Ident, fields: &Vec<FieldData>) -> TokenStream2 {
     let struct_create = render_struct_create(name, fields);
     let render_fields = render_fields(fields);
 
@@ -44,10 +44,10 @@ fn render_field(field: &FieldData) -> TokenStream2 {
     let name = field.name;
     let ty = field.ty;
 
-    match &field.meta {
-        PacketFieldMeta::With { module } => render_with_field(name, module),
-        PacketFieldMeta::MaxLength { length } => render_max_length_field(name, *length as u16),
-        PacketFieldMeta::Empty => render_simple_field(name, ty),
+    match &field.attribute {
+        Attribute::With { module } => render_with_field(name, module),
+        Attribute::MaxLength { length } => render_max_length_field(name, *length as u16),
+        Attribute::Empty => render_simple_field(name, ty),
     }
 }
 
