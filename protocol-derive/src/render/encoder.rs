@@ -3,7 +3,7 @@ use proc_macro2::TokenStream as TokenStream2;
 use proc_macro2::{Ident, Span};
 use quote::quote;
 
-pub(crate) fn render_encoder(name: &Ident, fields: &Vec<FieldData>) -> TokenStream2 {
+pub(crate) fn render_struct_encoder(name: &Ident, fields: &Vec<FieldData>) -> TokenStream2 {
     let render_fields = render_fields(fields);
 
     quote! {

@@ -1,8 +1,28 @@
 use crate::error::{DeriveInputParserError, FieldError};
 use proc_macro2::Ident;
+use std::env::var;
 use std::iter::FromIterator;
-use syn::Error as SynError;
+use syn::punctuated::Punctuated;
+use syn::Token;
 use syn::{Data, DeriveInput, Field, Fields, FieldsNamed, Lit, Meta, NestedMeta, Type};
+use syn::{Error as SynError, Variant};
+
+pub(crate) enum DeriveInputParseResult<'a> {
+    Struct {
+        name: &'a Ident,
+        fields: Vec<FieldData<'a>>,
+    },
+    Enum {
+        name: &'a Ident,
+        variants: Vec<VariantData<'a>>,
+    },
+}
+
+pub(crate) struct VariantData<'a> {
+    pub(crate) idx: u8,
+    pub(crate) name: &'a Ident,
+    pub(crate) fields: Vec<FieldData<'a>>,
+}
 
 pub(crate) struct FieldData<'a> {
     pub(crate) name: &'a Ident,
@@ -19,16 +39,47 @@ pub(crate) enum Attribute {
 
 pub(crate) fn parse_derive_input(
     input: &DeriveInput,
-) -> Result<(&Ident, Vec<FieldData>), DeriveInputParserError> {
+) -> Result<DeriveInputParseResult, DeriveInputParserError> {
     let name = &input.ident;
 
     match &input.data {
-        Data::Struct(data) => match &data.fields {
-            Fields::Named(named_fields) => Ok((name, parse_fields(named_fields)?)),
+        Data::Struct(data_struct) => match &data_struct.fields {
+            Fields::Named(named_fields) => {
+                let fields = parse_fields(named_fields)?;
+
+                Ok(DeriveInputParseResult::Struct { name, fields })
+            }
             _ => Err(DeriveInputParserError::UnnamedDataFields),
         },
+        Data::Enum(data_enum) => {
+            let variants = parse_variants(&data_enum.variants)?;
+
+            Ok(DeriveInputParseResult::Enum { name, variants })
+        }
         _ => Err(DeriveInputParserError::UnsupportedData),
     }
+}
+
+fn parse_variants(
+    variants: &Punctuated<Variant, Token![,]>,
+) -> Result<Vec<VariantData>, DeriveInputParserError> {
+    variants
+        .iter()
+        .enumerate()
+        .map(|(idx, v)| parse_variant(idx as u8, v))
+        .collect()
+}
+
+fn parse_variant(idx: u8, variant: &Variant) -> Result<VariantData, DeriveInputParserError> {
+    let name = &variant.ident;
+
+    let fields = match &variant.fields {
+        Fields::Named(named_fields) => parse_fields(named_fields),
+        Fields::Unit => Ok(Vec::new()),
+        _ => Err(DeriveInputParserError::UnnamedDataFields),
+    }?;
+
+    Ok(VariantData { idx, name, fields })
 }
 
 fn parse_fields(named_fields: &FieldsNamed) -> Result<Vec<FieldData>, DeriveInputParserError> {

@@ -4,7 +4,7 @@ use proc_macro2::{Ident, Span};
 use quote::quote;
 use syn::Type;
 
-pub(crate) fn render_decoder(name: &Ident, fields: &Vec<FieldData>) -> TokenStream2 {
+pub(crate) fn render_struct_decoder(name: &Ident, fields: &Vec<FieldData>) -> TokenStream2 {
     let struct_create = render_struct_create(name, fields);
     let render_fields = render_fields(fields);
 

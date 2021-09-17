@@ -7,6 +7,7 @@ use crate::impl_enum_encoder_decoder;
 use minecraft_protocol_derive::{Decoder, Encoder};
 use nbt::CompoundTag;
 use std::io::Read;
+use uuid::Uuid;
 
 pub enum GameServerBoundPacket {
     ServerBoundChatMessage(ServerBoundChatMessage),
@@ -19,6 +20,7 @@ pub enum GameClientBoundPacket {
     ClientBoundKeepAlive(ClientBoundKeepAlive),
     ChunkData(ChunkData),
     GameDisconnect(GameDisconnect),
+    BossBar(BossBar),
 }
 
 impl GameServerBoundPacket {
@@ -54,6 +56,7 @@ impl GameClientBoundPacket {
             GameClientBoundPacket::ClientBoundKeepAlive(_) => 0x20,
             GameClientBoundPacket::ChunkData(_) => 0x21,
             GameClientBoundPacket::JoinGame(_) => 0x25,
+            GameClientBoundPacket::BossBar(_) => 0x0D,
         }
     }
 
@@ -249,6 +252,69 @@ impl GameDisconnect {
     }
 }
 
+#[derive(Encoder, Decoder, Debug, PartialEq)]
+pub struct BossBar {
+    pub id: Uuid,
+    pub action: BossBarAction,
+}
+
+#[derive(Encoder, Decoder, Debug, PartialEq)]
+pub enum BossBarAction {
+    Add {
+        title: Message,
+        health: f32,
+        color: BossBarColor,
+        division: BossBarDivision,
+        flags: u8,
+    },
+    Remove,
+    UpdateHealth {
+        health: f32,
+    },
+    UpdateTitle {
+        title: Message,
+    },
+    UpdateStyle {
+        color: BossBarColor,
+        division: BossBarDivision,
+    },
+    UpdateFlags {
+        flags: u8,
+    },
+}
+
+#[derive(Debug, PartialEq, FromPrimitive, ToPrimitive)]
+pub enum BossBarColor {
+    Pink,
+    Blue,
+    Red,
+    Green,
+    Yellow,
+    Purple,
+    White,
+}
+
+impl_enum_encoder_decoder!(BossBarColor);
+
+#[derive(Debug, PartialEq, FromPrimitive, ToPrimitive)]
+pub enum BossBarDivision {
+    None,
+    Notches6,
+    Notches10,
+    Notches12,
+    Notches20,
+}
+
+impl_enum_encoder_decoder!(BossBarDivision);
+
+impl BossBar {
+    pub fn new(id: Uuid, action: BossBarAction) -> GameClientBoundPacket {
+        let boss_bar = BossBar { id, action };
+
+        GameClientBoundPacket::BossBar(boss_bar)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use crate::data::chat::Payload;
@@ -260,6 +326,7 @@ mod tests {
     use crate::STRING_MAX_LENGTH;
     use nbt::CompoundTag;
     use std::io::Cursor;
+    use std::str::FromStr;
 
     #[test]
     fn test_server_bound_chat_message_encode() {
@@ -504,5 +571,42 @@ mod tests {
             game_disconnect.reason,
             Message::new(Payload::text("Message"))
         );
+    }
+
+    #[test]
+    fn test_boss_bar_encode() {
+        let boss_bar = create_boss_bar_packet();
+
+        let mut vec = Vec::new();
+        boss_bar.encode(&mut vec).unwrap();
+
+        assert_eq!(
+            vec,
+            include_bytes!("../../../test/packet/game/boss_bar.dat").to_vec()
+        );
+    }
+
+    #[test]
+    fn test_boss_bar_decode() {
+        let mut cursor =
+            Cursor::new(include_bytes!("../../../test/packet/game/game_disconnect.dat").to_vec());
+        let boss_bar = BossBar::decode(&mut cursor).unwrap();
+
+        assert_eq!(boss_bar, create_boss_bar_packet());
+    }
+
+    fn create_boss_bar_packet() -> BossBar {
+        BossBar {
+            id: Uuid::from_str("afa32ac8-d3bf-47f3-99eb-294d60b3dca2").unwrap(),
+            action: BossBarAction::Add {
+                title: Message::new(Payload::Text {
+                    text: "Boss Bar".to_string(),
+                }),
+                health: 123.45,
+                color: BossBarColor::Yellow,
+                division: BossBarDivision::Notches10,
+                flags: 0,
+            },
+        }
     }
 }
