@@ -1,6 +1,5 @@
 use crate::error::{DeriveInputParserError, FieldError};
 use proc_macro2::Ident;
-use std::env::var;
 use std::iter::FromIterator;
 use syn::punctuated::Punctuated;
 use syn::Token;
@@ -12,7 +11,7 @@ pub(crate) enum DeriveInputParseResult<'a> {
         name: &'a Ident,
         fields: Vec<FieldData<'a>>,
     },
-    Enum {
+    StructVariant {
         name: &'a Ident,
         variants: Vec<VariantData<'a>>,
     },
@@ -54,7 +53,7 @@ pub(crate) fn parse_derive_input(
         Data::Enum(data_enum) => {
             let variants = parse_variants(&data_enum.variants)?;
 
-            Ok(DeriveInputParseResult::Enum { name, variants })
+            Ok(DeriveInputParseResult::StructVariant { name, variants })
         }
         _ => Err(DeriveInputParserError::UnsupportedData),
     }

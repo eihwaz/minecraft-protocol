@@ -4,6 +4,7 @@ use crate::data::chat::Message;
 use crate::decoder::Decoder;
 use crate::error::DecodeError;
 use crate::impl_enum_encoder_decoder;
+use byteorder::{ReadBytesExt, WriteBytesExt};
 use minecraft_protocol_derive::{Decoder, Encoder};
 use nbt::CompoundTag;
 use std::io::Read;
@@ -574,39 +575,66 @@ mod tests {
     }
 
     #[test]
-    fn test_boss_bar_encode() {
-        let boss_bar = create_boss_bar_packet();
+    fn test_boss_bar_add_encode() {
+        let boss_bar_add = create_boss_bar_add_packet();
 
         let mut vec = Vec::new();
-        boss_bar.encode(&mut vec).unwrap();
+        boss_bar_add.encode(&mut vec).unwrap();
 
         assert_eq!(
             vec,
-            include_bytes!("../../../test/packet/game/boss_bar.dat").to_vec()
+            include_bytes!("../../../test/packet/game/boss_bar_add.dat").to_vec()
         );
     }
 
     #[test]
-    fn test_boss_bar_decode() {
+    fn test_boss_bar_add_decode() {
         let mut cursor =
-            Cursor::new(include_bytes!("../../../test/packet/game/game_disconnect.dat").to_vec());
-        let boss_bar = BossBar::decode(&mut cursor).unwrap();
+            Cursor::new(include_bytes!("../../../test/packet/game/boss_bar_add.dat").to_vec());
+        let boss_bar_add = BossBar::decode(&mut cursor).unwrap();
 
-        assert_eq!(boss_bar, create_boss_bar_packet());
+        assert_eq!(boss_bar_add, create_boss_bar_add_packet());
     }
 
-    fn create_boss_bar_packet() -> BossBar {
+    fn create_boss_bar_add_packet() -> BossBar {
         BossBar {
             id: Uuid::from_str("afa32ac8-d3bf-47f3-99eb-294d60b3dca2").unwrap(),
             action: BossBarAction::Add {
-                title: Message::new(Payload::Text {
-                    text: "Boss Bar".to_string(),
-                }),
+                title: Message::from_str("Boss title"),
                 health: 123.45,
                 color: BossBarColor::Yellow,
                 division: BossBarDivision::Notches10,
-                flags: 0,
+                flags: 7,
             },
+        }
+    }
+
+    #[test]
+    fn test_boss_bar_remove_encode() {
+        let boss_bar_remove = create_boss_bar_remove_packet();
+
+        let mut vec = Vec::new();
+        boss_bar_remove.encode(&mut vec).unwrap();
+
+        assert_eq!(
+            vec,
+            include_bytes!("../../../test/packet/game/boss_bar_remove.dat").to_vec()
+        );
+    }
+
+    #[test]
+    fn test_boss_bar_remove_decode() {
+        let mut cursor =
+            Cursor::new(include_bytes!("../../../test/packet/game/boss_bar_remove.dat").to_vec());
+        let boss_bar_remove = BossBar::decode(&mut cursor).unwrap();
+
+        assert_eq!(boss_bar_remove, create_boss_bar_remove_packet());
+    }
+
+    fn create_boss_bar_remove_packet() -> BossBar {
+        BossBar {
+            id: Uuid::from_str("afa32ac8-d3bf-47f3-99eb-294d60b3dca2").unwrap(),
+            action: BossBarAction::Remove,
         }
     }
 }

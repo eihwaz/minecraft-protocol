@@ -324,6 +324,10 @@ impl Message {
         }
     }
 
+    pub fn from_str(text: &str) -> Message {
+        Message::new(Payload::text(text))
+    }
+
     pub fn from_json(json: &str) -> Result<Self, Error> {
         serde_json::from_str(json)
     }
