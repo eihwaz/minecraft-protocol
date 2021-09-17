@@ -1,11 +1,11 @@
-use crate::parse::{Attribute, FieldData};
+use crate::parse::{Attribute, FieldData, VariantData};
 use proc_macro2::TokenStream as TokenStream2;
 use proc_macro2::{Ident, Span};
 use quote::quote;
 use syn::Type;
 
-pub(crate) fn render_decoder(name: &Ident, fields: &Vec<FieldData>) -> TokenStream2 {
-    let struct_create = render_struct_create(name, fields);
+pub(crate) fn render_struct_decoder(name: &Ident, fields: &Vec<FieldData>) -> TokenStream2 {
+    let field_names_joined_comma = render_field_names_joined_comma(fields);
     let render_fields = render_fields(fields);
 
     quote! {
@@ -16,28 +16,72 @@ pub(crate) fn render_decoder(name: &Ident, fields: &Vec<FieldData>) -> TokenStre
             fn decode<R: std::io::Read>(reader: &mut R) -> Result<Self::Output, crate::error::DecodeError> {
                 #render_fields
 
-                Ok(#struct_create)
+                Ok(#name {
+                    #field_names_joined_comma
+                })
             }
         }
     }
 }
 
-fn render_struct_create(name: &Ident, fields: &Vec<FieldData>) -> TokenStream2 {
-    let struct_fields = fields
-        .iter()
-        .map(|f| f.name)
-        .map(|n| quote!(#n,))
-        .collect::<TokenStream2>();
+pub(crate) fn render_struct_variant_decoder(
+    name: &Ident,
+    variants: &Vec<VariantData>,
+) -> TokenStream2 {
+    let render_variants = render_variants(variants);
 
     quote! {
-        #name {
-          #struct_fields
+        #[automatically_derived]
+        impl crate::decoder::Decoder for #name {
+            type Output = Self;
+
+            fn decode<R: std::io::Read>(reader: &mut R) -> Result<Self::Output, crate::error::DecodeError> {
+                let type_id = reader.read_u8()?;
+
+                match type_id {
+                    #render_variants
+                    _ => Err(DecodeError::UnknownEnumType { type_id }),
+                }
+            }
         }
     }
 }
 
+fn render_variants(variants: &Vec<VariantData>) -> TokenStream2 {
+    variants.iter().map(|v| render_variant(v)).collect()
+}
+
+fn render_variant(variant: &VariantData) -> TokenStream2 {
+    let idx = variant.idx;
+    let name = variant.name;
+    let fields = &variant.fields;
+
+    if fields.is_empty() {
+        quote! {
+            #idx => Ok(Self::#name),
+        }
+    } else {
+        let field_names_joined_comma = render_field_names_joined_comma(fields);
+        let render_fields = render_fields(fields);
+
+        quote! {
+            #idx => {
+                #render_fields
+
+                Ok(Self::#name {
+                    #field_names_joined_comma
+                })
+            }
+        }
+    }
+}
+
+fn render_field_names_joined_comma(fields: &Vec<FieldData>) -> TokenStream2 {
+    fields.iter().map(|f| f.name).map(|n| quote!(#n,)).collect()
+}
+
 fn render_fields(fields: &Vec<FieldData>) -> TokenStream2 {
-    fields.iter().map(|f| render_field(f)).flatten().collect()
+    fields.iter().map(|f| render_field(f)).collect()
 }
 
 fn render_field(field: &FieldData) -> TokenStream2 {

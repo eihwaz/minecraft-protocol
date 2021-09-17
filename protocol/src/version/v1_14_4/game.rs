@@ -4,9 +4,11 @@ use crate::data::chat::Message;
 use crate::decoder::Decoder;
 use crate::error::DecodeError;
 use crate::impl_enum_encoder_decoder;
+use byteorder::{ReadBytesExt, WriteBytesExt};
 use minecraft_protocol_derive::{Decoder, Encoder};
 use nbt::CompoundTag;
 use std::io::Read;
+use uuid::Uuid;
 
 pub enum GameServerBoundPacket {
     ServerBoundChatMessage(ServerBoundChatMessage),
@@ -19,6 +21,7 @@ pub enum GameClientBoundPacket {
     ClientBoundKeepAlive(ClientBoundKeepAlive),
     ChunkData(ChunkData),
     GameDisconnect(GameDisconnect),
+    BossBar(BossBar),
 }
 
 impl GameServerBoundPacket {
@@ -54,6 +57,7 @@ impl GameClientBoundPacket {
             GameClientBoundPacket::ClientBoundKeepAlive(_) => 0x20,
             GameClientBoundPacket::ChunkData(_) => 0x21,
             GameClientBoundPacket::JoinGame(_) => 0x25,
+            GameClientBoundPacket::BossBar(_) => 0x0D,
         }
     }
 
@@ -249,6 +253,69 @@ impl GameDisconnect {
     }
 }
 
+#[derive(Encoder, Decoder, Debug, PartialEq)]
+pub struct BossBar {
+    pub id: Uuid,
+    pub action: BossBarAction,
+}
+
+#[derive(Encoder, Decoder, Debug, PartialEq)]
+pub enum BossBarAction {
+    Add {
+        title: Message,
+        health: f32,
+        color: BossBarColor,
+        division: BossBarDivision,
+        flags: u8,
+    },
+    Remove,
+    UpdateHealth {
+        health: f32,
+    },
+    UpdateTitle {
+        title: Message,
+    },
+    UpdateStyle {
+        color: BossBarColor,
+        division: BossBarDivision,
+    },
+    UpdateFlags {
+        flags: u8,
+    },
+}
+
+#[derive(Debug, PartialEq, FromPrimitive, ToPrimitive)]
+pub enum BossBarColor {
+    Pink,
+    Blue,
+    Red,
+    Green,
+    Yellow,
+    Purple,
+    White,
+}
+
+impl_enum_encoder_decoder!(BossBarColor);
+
+#[derive(Debug, PartialEq, FromPrimitive, ToPrimitive)]
+pub enum BossBarDivision {
+    None,
+    Notches6,
+    Notches10,
+    Notches12,
+    Notches20,
+}
+
+impl_enum_encoder_decoder!(BossBarDivision);
+
+impl BossBar {
+    pub fn new(id: Uuid, action: BossBarAction) -> GameClientBoundPacket {
+        let boss_bar = BossBar { id, action };
+
+        GameClientBoundPacket::BossBar(boss_bar)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use crate::data::chat::Payload;
@@ -260,6 +327,7 @@ mod tests {
     use crate::STRING_MAX_LENGTH;
     use nbt::CompoundTag;
     use std::io::Cursor;
+    use std::str::FromStr;
 
     #[test]
     fn test_server_bound_chat_message_encode() {
@@ -504,5 +572,69 @@ mod tests {
             game_disconnect.reason,
             Message::new(Payload::text("Message"))
         );
+    }
+
+    #[test]
+    fn test_boss_bar_add_encode() {
+        let boss_bar_add = create_boss_bar_add_packet();
+
+        let mut vec = Vec::new();
+        boss_bar_add.encode(&mut vec).unwrap();
+
+        assert_eq!(
+            vec,
+            include_bytes!("../../../test/packet/game/boss_bar_add.dat").to_vec()
+        );
+    }
+
+    #[test]
+    fn test_boss_bar_add_decode() {
+        let mut cursor =
+            Cursor::new(include_bytes!("../../../test/packet/game/boss_bar_add.dat").to_vec());
+        let boss_bar_add = BossBar::decode(&mut cursor).unwrap();
+
+        assert_eq!(boss_bar_add, create_boss_bar_add_packet());
+    }
+
+    fn create_boss_bar_add_packet() -> BossBar {
+        BossBar {
+            id: Uuid::from_str("afa32ac8-d3bf-47f3-99eb-294d60b3dca2").unwrap(),
+            action: BossBarAction::Add {
+                title: Message::from_str("Boss title"),
+                health: 123.45,
+                color: BossBarColor::Yellow,
+                division: BossBarDivision::Notches10,
+                flags: 7,
+            },
+        }
+    }
+
+    #[test]
+    fn test_boss_bar_remove_encode() {
+        let boss_bar_remove = create_boss_bar_remove_packet();
+
+        let mut vec = Vec::new();
+        boss_bar_remove.encode(&mut vec).unwrap();
+
+        assert_eq!(
+            vec,
+            include_bytes!("../../../test/packet/game/boss_bar_remove.dat").to_vec()
+        );
+    }
+
+    #[test]
+    fn test_boss_bar_remove_decode() {
+        let mut cursor =
+            Cursor::new(include_bytes!("../../../test/packet/game/boss_bar_remove.dat").to_vec());
+        let boss_bar_remove = BossBar::decode(&mut cursor).unwrap();
+
+        assert_eq!(boss_bar_remove, create_boss_bar_remove_packet());
+    }
+
+    fn create_boss_bar_remove_packet() -> BossBar {
+        BossBar {
+            id: Uuid::from_str("afa32ac8-d3bf-47f3-99eb-294d60b3dca2").unwrap(),
+            action: BossBarAction::Remove,
+        }
     }
 }

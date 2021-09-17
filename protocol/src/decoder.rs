@@ -157,6 +157,22 @@ impl Decoder for u64 {
     }
 }
 
+impl Decoder for f32 {
+    type Output = Self;
+
+    fn decode<R: Read>(reader: &mut R) -> Result<Self::Output, DecodeError> {
+        Ok(reader.read_f32::<BigEndian>()?)
+    }
+}
+
+impl Decoder for f64 {
+    type Output = Self;
+
+    fn decode<R: Read>(reader: &mut R) -> Result<Self::Output, DecodeError> {
+        Ok(reader.read_f64::<BigEndian>()?)
+    }
+}
+
 impl Decoder for String {
     type Output = Self;
 

@@ -139,6 +139,18 @@ impl Encoder for u64 {
     }
 }
 
+impl Encoder for f32 {
+    fn encode<W: Write>(&self, writer: &mut W) -> Result<(), EncodeError> {
+        Ok(writer.write_f32::<BigEndian>(*self)?)
+    }
+}
+
+impl Encoder for f64 {
+    fn encode<W: Write>(&self, writer: &mut W) -> Result<(), EncodeError> {
+        Ok(writer.write_f64::<BigEndian>(*self)?)
+    }
+}
+
 impl Encoder for String {
     fn encode<W: Write>(&self, writer: &mut W) -> Result<(), EncodeError> {
         Ok(writer.write_string(self, 32_768)?)
