@@ -48,11 +48,7 @@ pub(crate) fn render_struct_variant_decoder(
 }
 
 fn render_variants(variants: &Vec<VariantData>) -> TokenStream2 {
-    variants
-        .iter()
-        .map(|v| render_variant(v))
-        .flatten()
-        .collect()
+    variants.iter().map(|v| render_variant(v)).collect()
 }
 
 fn render_variant(variant: &VariantData) -> TokenStream2 {
@@ -85,7 +81,7 @@ fn render_field_names_joined_comma(fields: &Vec<FieldData>) -> TokenStream2 {
 }
 
 fn render_fields(fields: &Vec<FieldData>) -> TokenStream2 {
-    fields.iter().map(|f| render_field(f)).flatten().collect()
+    fields.iter().map(|f| render_field(f)).collect()
 }
 
 fn render_field(field: &FieldData) -> TokenStream2 {
