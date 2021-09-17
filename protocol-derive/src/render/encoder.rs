@@ -104,7 +104,7 @@ fn render_max_length_field(name: &Ident, max_length: u16, with_self: bool) -> To
     let final_name = get_field_final_name(name, with_self);
 
     quote! {
-        crate::encoder::EncoderWriteExt::write_string(writer, &#final_name, #max_length)?;
+        crate::encoder::EncoderWriteExt::write_string(writer, #final_name, #max_length)?;
     }
 }
 
