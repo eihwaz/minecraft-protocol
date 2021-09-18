@@ -24,10 +24,7 @@ pub(crate) fn render_struct_decoder(name: &Ident, fields: &Vec<FieldData>) -> To
     }
 }
 
-pub(crate) fn render_struct_variant_decoder(
-    name: &Ident,
-    variants: &Vec<VariantData>,
-) -> TokenStream2 {
+pub(crate) fn render_enum_decoder(name: &Ident, variants: &Vec<VariantData>) -> TokenStream2 {
     let render_variants = render_variants(variants);
 
     quote! {
@@ -52,26 +49,37 @@ fn render_variants(variants: &Vec<VariantData>) -> TokenStream2 {
 }
 
 fn render_variant(variant: &VariantData) -> TokenStream2 {
-    let idx = variant.idx;
+    if variant.fields.is_empty() {
+        render_unit_variant(variant)
+    } else {
+        render_struct_variant(variant)
+    }
+}
+
+fn render_unit_variant(variant: &VariantData) -> TokenStream2 {
+    let discriminant = variant.discriminant;
+    let name = variant.name;
+
+    quote! {
+        #discriminant => Ok(Self::#name),
+    }
+}
+
+fn render_struct_variant(variant: &VariantData) -> TokenStream2 {
+    let discriminant = variant.discriminant;
     let name = variant.name;
     let fields = &variant.fields;
 
-    if fields.is_empty() {
-        quote! {
-            #idx => Ok(Self::#name),
-        }
-    } else {
-        let field_names_joined_comma = render_field_names_joined_comma(fields);
-        let render_fields = render_fields(fields);
+    let field_names_joined_comma = render_field_names_joined_comma(fields);
+    let render_fields = render_fields(fields);
 
-        quote! {
-            #idx => {
-                #render_fields
+    quote! {
+        #discriminant => {
+            #render_fields
 
-                Ok(Self::#name {
-                    #field_names_joined_comma
-                })
-            }
+            Ok(Self::#name {
+                #field_names_joined_comma
+            })
         }
     }
 }

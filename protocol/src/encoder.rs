@@ -1,7 +1,6 @@
 use crate::error::EncodeError;
 use byteorder::{BigEndian, WriteBytesExt};
 use nbt::CompoundTag;
-use num_traits::ToPrimitive;
 use std::io::Write;
 use uuid::Uuid;
 
@@ -16,8 +15,6 @@ pub trait EncoderWriteExt {
     fn write_string(&mut self, value: &str, max_length: u16) -> Result<(), EncodeError>;
 
     fn write_byte_array(&mut self, value: &[u8]) -> Result<(), EncodeError>;
-
-    fn write_enum<T: ToPrimitive>(&mut self, value: &T) -> Result<(), EncodeError>;
 
     fn write_compound_tag(&mut self, value: &CompoundTag) -> Result<(), EncodeError>;
 
@@ -76,13 +73,6 @@ impl<W: Write> EncoderWriteExt for W {
     fn write_byte_array(&mut self, value: &[u8]) -> Result<(), EncodeError> {
         self.write_var_i32(value.len() as i32)?;
         self.write_all(value)?;
-
-        Ok(())
-    }
-
-    fn write_enum<T: ToPrimitive>(&mut self, value: &T) -> Result<(), EncodeError> {
-        let type_value = ToPrimitive::to_u8(value).unwrap();
-        self.write_u8(type_value)?;
 
         Ok(())
     }

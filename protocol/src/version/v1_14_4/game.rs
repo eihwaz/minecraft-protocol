@@ -1,9 +1,6 @@
-use num_derive::{FromPrimitive, ToPrimitive};
-
 use crate::data::chat::Message;
 use crate::decoder::Decoder;
 use crate::error::DecodeError;
-use crate::impl_enum_encoder_decoder;
 use byteorder::{ReadBytesExt, WriteBytesExt};
 use minecraft_protocol_derive::{Decoder, Encoder};
 use nbt::CompoundTag;
@@ -113,14 +110,12 @@ pub struct ClientBoundChatMessage {
     pub position: MessagePosition,
 }
 
-#[derive(Debug, Eq, PartialEq, FromPrimitive, ToPrimitive)]
+#[derive(Encoder, Decoder, Debug, Eq, PartialEq)]
 pub enum MessagePosition {
     Chat,
     System,
     HotBar,
 }
-
-impl_enum_encoder_decoder!(MessagePosition);
 
 impl ClientBoundChatMessage {
     pub fn new(message: Message, position: MessagePosition) -> GameClientBoundPacket {
@@ -143,7 +138,7 @@ pub struct JoinGame {
     pub reduced_debug_info: bool,
 }
 
-#[derive(Debug, Eq, PartialEq, FromPrimitive, ToPrimitive)]
+#[derive(Encoder, Decoder, Debug, Eq, PartialEq)]
 pub enum GameMode {
     Survival = 0,
     Creative = 1,
@@ -151,8 +146,6 @@ pub enum GameMode {
     Spectator = 3,
     Hardcore = 8,
 }
-
-impl_enum_encoder_decoder!(GameMode);
 
 impl JoinGame {
     pub fn new(
@@ -284,7 +277,7 @@ pub enum BossBarAction {
     },
 }
 
-#[derive(Debug, PartialEq, FromPrimitive, ToPrimitive)]
+#[derive(Encoder, Decoder, Debug, PartialEq)]
 pub enum BossBarColor {
     Pink,
     Blue,
@@ -295,9 +288,7 @@ pub enum BossBarColor {
     White,
 }
 
-impl_enum_encoder_decoder!(BossBarColor);
-
-#[derive(Debug, PartialEq, FromPrimitive, ToPrimitive)]
+#[derive(Encoder, Decoder, Debug, PartialEq)]
 pub enum BossBarDivision {
     None,
     Notches6,
@@ -305,8 +296,6 @@ pub enum BossBarDivision {
     Notches12,
     Notches20,
 }
-
-impl_enum_encoder_decoder!(BossBarDivision);
 
 impl BossBar {
     pub fn new(id: Uuid, action: BossBarAction) -> GameClientBoundPacket {
@@ -479,7 +468,7 @@ mod tests {
     fn test_join_game_encode() {
         let join_game = JoinGame {
             entity_id: 27,
-            game_mode: GameMode::Spectator,
+            game_mode: GameMode::Hardcore,
             dimension: 23,
             max_players: 100,
             level_type: String::from("default"),
@@ -503,7 +492,7 @@ mod tests {
         let join_game = JoinGame::decode(&mut cursor).unwrap();
 
         assert_eq!(join_game.entity_id, 27);
-        assert_eq!(join_game.game_mode, GameMode::Spectator);
+        assert_eq!(join_game.game_mode, GameMode::Hardcore);
         assert_eq!(join_game.dimension, 23);
         assert_eq!(join_game.max_players, 100);
         assert_eq!(join_game.level_type, String::from("default"));

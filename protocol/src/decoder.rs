@@ -1,7 +1,6 @@
 use crate::error::DecodeError;
 use byteorder::{BigEndian, ReadBytesExt};
 use nbt::CompoundTag;
-use num_traits::FromPrimitive;
 use std::io::Read;
 use uuid::Uuid;
 
@@ -18,8 +17,6 @@ pub trait DecoderReadExt {
     fn read_string(&mut self, max_length: u16) -> Result<String, DecodeError>;
 
     fn read_byte_array(&mut self) -> Result<Vec<u8>, DecodeError>;
-
-    fn read_enum<T: FromPrimitive>(&mut self) -> Result<T, DecodeError>;
 
     fn read_compound_tag(&mut self) -> Result<CompoundTag, DecodeError>;
 
@@ -84,13 +81,6 @@ impl<R: Read> DecoderReadExt for R {
         self.read_exact(&mut buf)?;
 
         Ok(buf)
-    }
-
-    fn read_enum<T: FromPrimitive>(&mut self) -> Result<T, DecodeError> {
-        let type_id = self.read_u8()?;
-        let result = FromPrimitive::from_u8(type_id);
-
-        result.ok_or_else(|| DecodeError::UnknownEnumType { type_id })
     }
 
     fn read_compound_tag(&mut self) -> Result<CompoundTag, DecodeError> {
