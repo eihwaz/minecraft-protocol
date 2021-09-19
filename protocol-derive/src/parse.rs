@@ -2,23 +2,23 @@ use crate::error::{DeriveInputParserError, FieldError};
 use proc_macro2::Ident;
 use std::iter::FromIterator;
 use syn::punctuated::Punctuated;
-use syn::Token;
-use syn::{Data, DeriveInput, Field, Fields, FieldsNamed, Lit, Meta, NestedMeta, Type};
+use syn::{Data, DeriveInput, ExprLit, Field, Fields, FieldsNamed, Lit, Meta, NestedMeta, Type};
 use syn::{Error as SynError, Variant};
+use syn::{Expr, Token};
 
 pub(crate) enum DeriveInputParseResult<'a> {
     Struct {
         name: &'a Ident,
         fields: Vec<FieldData<'a>>,
     },
-    StructVariant {
+    Enum {
         name: &'a Ident,
         variants: Vec<VariantData<'a>>,
     },
 }
 
 pub(crate) struct VariantData<'a> {
-    pub(crate) idx: u8,
+    pub(crate) discriminant: u8,
     pub(crate) name: &'a Ident,
     pub(crate) fields: Vec<FieldData<'a>>,
 }
@@ -53,7 +53,7 @@ pub(crate) fn parse_derive_input(
         Data::Enum(data_enum) => {
             let variants = parse_variants(&data_enum.variants)?;
 
-            Ok(DeriveInputParseResult::StructVariant { name, variants })
+            Ok(DeriveInputParseResult::Enum { name, variants })
         }
         _ => Err(DeriveInputParserError::UnsupportedData),
     }
@@ -70,6 +70,7 @@ fn parse_variants(
 }
 
 fn parse_variant(idx: u8, variant: &Variant) -> Result<VariantData, DeriveInputParserError> {
+    let discriminant = parse_variant_discriminant(variant).unwrap_or(idx);
     let name = &variant.ident;
 
     let fields = match &variant.fields {
@@ -78,7 +79,24 @@ fn parse_variant(idx: u8, variant: &Variant) -> Result<VariantData, DeriveInputP
         _ => Err(DeriveInputParserError::UnnamedDataFields),
     }?;
 
-    Ok(VariantData { idx, name, fields })
+    Ok(VariantData {
+        discriminant,
+        name,
+        fields,
+    })
+}
+
+fn parse_variant_discriminant(variant: &Variant) -> Option<u8> {
+    variant
+        .discriminant
+        .as_ref()
+        .and_then(|(_, expr)| match expr {
+            Expr::Lit(ExprLit {
+                lit: Lit::Int(lit_int),
+                ..
+            }) => lit_int.base10_parse().ok(),
+            _ => None,
+        })
 }
 
 fn parse_fields(named_fields: &FieldsNamed) -> Result<Vec<FieldData>, DeriveInputParserError> {
