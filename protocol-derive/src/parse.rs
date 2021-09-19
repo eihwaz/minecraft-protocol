@@ -70,7 +70,7 @@ fn parse_variants(
 }
 
 fn parse_variant(idx: u8, variant: &Variant) -> Result<VariantData, DeriveInputParserError> {
-    let discriminant = parse_variant_discriminant(variant)?.unwrap_or(idx);
+    let discriminant = parse_variant_discriminant(variant).unwrap_or(idx);
     let name = &variant.ident;
 
     let fields = match &variant.fields {
@@ -87,17 +87,16 @@ fn parse_variant(idx: u8, variant: &Variant) -> Result<VariantData, DeriveInputP
 }
 
 fn parse_variant_discriminant(variant: &Variant) -> Option<u8> {
-    if let Some((_, expr)) = &variant.discriminant {
-        if let Expr::Lit(ExprLit {
-            lit: Lit::Int(lit_int),
-            ..
-        }) = expr
-        {
-            return lit_int.base10_parse().ok();
-        }
-    }
-
-    None
+    variant
+        .discriminant
+        .as_ref()
+        .and_then(|(_, expr)| match expr {
+            Expr::Lit(ExprLit {
+                lit: Lit::Int(lit_int),
+                ..
+            }) => lit_int.base10_parse().ok(),
+            _ => None,
+        })
 }
 
 fn parse_fields(named_fields: &FieldsNamed) -> Result<Vec<FieldData>, DeriveInputParserError> {
