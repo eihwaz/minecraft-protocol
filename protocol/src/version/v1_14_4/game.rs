@@ -1,5 +1,7 @@
 use crate::data::chat::Message;
 use crate::decoder::Decoder;
+use crate::decoder::DecoderReadExt;
+use crate::encoder::EncoderWriteExt;
 use crate::error::DecodeError;
 use byteorder::{ReadBytesExt, WriteBytesExt};
 use minecraft_protocol_derive::{Decoder, Encoder};
@@ -19,6 +21,7 @@ pub enum GameClientBoundPacket {
     ChunkData(ChunkData),
     GameDisconnect(GameDisconnect),
     BossBar(BossBar),
+    EntityAction(EntityAction),
 }
 
 impl GameServerBoundPacket {
@@ -55,6 +58,7 @@ impl GameClientBoundPacket {
             GameClientBoundPacket::ChunkData(_) => 0x21,
             GameClientBoundPacket::JoinGame(_) => 0x25,
             GameClientBoundPacket::BossBar(_) => 0x0D,
+            GameClientBoundPacket::EntityAction(_) => 0x1B,
         }
     }
 
@@ -303,6 +307,29 @@ impl BossBar {
 
         GameClientBoundPacket::BossBar(boss_bar)
     }
+}
+
+#[derive(Encoder, Decoder, Debug, PartialEq)]
+pub struct EntityAction {
+    #[data_type(with = "var_int")]
+    pub entity_id: i32,
+    pub action_id: EntityActionId,
+    #[data_type(with = "var_int")]
+    pub jump_boost: i32,
+}
+
+#[derive(Encoder, Decoder, Debug, PartialEq)]
+#[data_type(with = "var_int")]
+pub enum EntityActionId {
+    StartSneaking,
+    StopSneaking,
+    LeaveBad,
+    StartSprinting,
+    StopSprinting,
+    StartJumpWithHorse,
+    StopJumpWithHorse,
+    OpenHorseInventory,
+    StartFlyingWithElytra,
 }
 
 #[cfg(test)]
@@ -625,5 +652,38 @@ mod tests {
             id: Uuid::from_str("afa32ac8-d3bf-47f3-99eb-294d60b3dca2").unwrap(),
             action: BossBarAction::Remove,
         }
+    }
+
+    #[test]
+    fn test_entity_action_encode() {
+        let entity_action = EntityAction {
+            entity_id: 12345,
+            action_id: EntityActionId::StartFlyingWithElytra,
+            jump_boost: i32::MAX,
+        };
+
+        let mut vec = Vec::new();
+        entity_action.encode(&mut vec).unwrap();
+
+        assert_eq!(
+            vec,
+            include_bytes!("../../../test/packet/game/entity_action.dat").to_vec()
+        );
+    }
+
+    #[test]
+    fn test_entity_action_decode() {
+        let mut cursor =
+            Cursor::new(include_bytes!("../../../test/packet/game/entity_action.dat").to_vec());
+        let entity_action = EntityAction::decode(&mut cursor).unwrap();
+
+        assert_eq!(
+            entity_action,
+            EntityAction {
+                entity_id: 12345,
+                action_id: EntityActionId::StartFlyingWithElytra,
+                jump_boost: i32::MAX,
+            }
+        );
     }
 }
