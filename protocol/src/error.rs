@@ -65,7 +65,7 @@ pub enum DecodeError {
     },
     /// Type id was not parsed as valid enum value.
     UnknownEnumType {
-        type_id: u8,
+        type_id: usize,
     },
     TagDecodeError {
         tag_decode_error: TagDecodeError,

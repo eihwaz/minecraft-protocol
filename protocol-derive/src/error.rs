@@ -7,14 +7,13 @@ pub(crate) enum DeriveInputParserError {
     UnsupportedData,
     /// Data fields must be named.
     UnnamedDataFields,
-    FieldError {
-        field_error: FieldError,
-    },
+    /// Possible errors while parsing attributes.
+    AttributeError { attribute_error: AttributeError },
 }
 
-/// Possible errors while parsing field.
+/// Possible errors while parsing attributes.
 #[derive(Debug)]
-pub(crate) enum FieldError {
+pub(crate) enum AttributeError {
     /// Failed to parse field meta due incorrect syntax.
     BadAttributeSyntax { syn_error: SynError },
     /// Unsupported field attribute type.
@@ -24,22 +23,22 @@ pub(crate) enum FieldError {
     AttributeWrongValueType,
 }
 
-impl From<FieldError> for DeriveInputParserError {
-    fn from(field_error: FieldError) -> Self {
-        DeriveInputParserError::FieldError { field_error }
+impl From<AttributeError> for DeriveInputParserError {
+    fn from(attribute_error: AttributeError) -> Self {
+        DeriveInputParserError::AttributeError { attribute_error }
     }
 }
 
 impl From<SynError> for DeriveInputParserError {
     fn from(syn_error: SynError) -> Self {
-        DeriveInputParserError::FieldError {
-            field_error: FieldError::BadAttributeSyntax { syn_error },
+        DeriveInputParserError::AttributeError {
+            attribute_error: AttributeError::BadAttributeSyntax { syn_error },
         }
     }
 }
 
-impl From<SynError> for FieldError {
+impl From<SynError> for AttributeError {
     fn from(syn_error: SynError) -> Self {
-        FieldError::BadAttributeSyntax { syn_error }
+        AttributeError::BadAttributeSyntax { syn_error }
     }
 }

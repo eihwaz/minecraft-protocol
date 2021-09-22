@@ -18,7 +18,11 @@ pub fn derive_encoder(tokens: TokenStream) -> TokenStream {
 
     TokenStream::from(match derive_parse_result {
         DeriveInputParseResult::Struct { name, fields } => render_struct_encoder(name, &fields),
-        DeriveInputParseResult::Enum { name, variants } => render_enum_encoder(name, &variants),
+        DeriveInputParseResult::Enum {
+            name,
+            discriminant_type,
+            variants,
+        } => render_enum_encoder(name, &discriminant_type, &variants),
     })
 }
 
@@ -29,6 +33,10 @@ pub fn derive_decoder(tokens: TokenStream) -> TokenStream {
 
     TokenStream::from(match derive_parse_result {
         DeriveInputParseResult::Struct { name, fields } => render_struct_decoder(name, &fields),
-        DeriveInputParseResult::Enum { name, variants } => render_enum_decoder(name, &variants),
+        DeriveInputParseResult::Enum {
+            name,
+            discriminant_type,
+            variants,
+        } => render_enum_decoder(name, &discriminant_type, &variants),
     })
 }
