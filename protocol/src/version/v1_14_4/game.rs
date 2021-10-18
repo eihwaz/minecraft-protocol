@@ -12,6 +12,7 @@ use uuid::Uuid;
 pub enum GameServerBoundPacket {
     ServerBoundChatMessage(ServerBoundChatMessage),
     ServerBoundKeepAlive(ServerBoundKeepAlive),
+    ServerBoundAbilities(ServerBoundAbilities),
 }
 
 pub enum GameClientBoundPacket {
@@ -29,6 +30,7 @@ impl GameServerBoundPacket {
         match self {
             GameServerBoundPacket::ServerBoundChatMessage(_) => 0x03,
             GameServerBoundPacket::ServerBoundKeepAlive(_) => 0x0F,
+            GameServerBoundPacket::ServerBoundAbilities(_) => 0x19,
         }
     }
 
@@ -330,6 +332,20 @@ pub enum EntityActionId {
     StopJumpWithHorse,
     OpenHorseInventory,
     StartFlyingWithElytra,
+}
+
+#[derive(Encoder, Decoder, Debug, PartialEq)]
+pub struct ServerBoundAbilities {
+    #[data_type(bitfield)]
+    pub invulnerable: bool,
+    #[data_type(bitfield)]
+    pub allow_flying: bool,
+    #[data_type(bitfield)]
+    pub flying: bool,
+    #[data_type(bitfield)]
+    pub creative_mode: bool,
+    pub fly_speed: f32,
+    pub walk_speed: f32,
 }
 
 #[cfg(test)]
@@ -685,5 +701,34 @@ mod tests {
                 jump_boost: i32::MAX,
             }
         );
+    }
+
+    #[test]
+    fn test_serverbound_abilities_encode() {
+        let abilities = ServerBoundAbilities {
+            invulnerable: true,
+            flying: true,
+            allow_flying: false,
+            creative_mode: true,
+            fly_speed: 0.0,
+            walk_speed: 0.0,
+        };
+
+        let mut vec = Vec::new();
+        abilities.encode(&mut vec).unwrap();
+
+        assert_eq!(vec, [13, 0, 0, 0, 0, 0, 0, 0, 0]);
+    }
+
+    #[test]
+    fn test_serverbound_abilities_decode() {
+        let vec = [13, 0, 0, 0, 0, 0, 0, 0, 0].to_vec();
+        let mut cursor = Cursor::new(vec);
+
+        let abilities = ServerBoundAbilities::decode(&mut cursor).unwrap();
+        assert!(abilities.invulnerable);
+        assert!(!abilities.allow_flying);
+        assert!(abilities.flying);
+        assert!(abilities.creative_mode);
     }
 }
