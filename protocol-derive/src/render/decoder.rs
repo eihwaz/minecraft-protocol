@@ -166,19 +166,20 @@ fn render_max_length_field(name: &Ident, max_length: u16) -> TokenStream2 {
 }
 
 fn render_bitfield(name: &Ident, idx: u8, position: &BitfieldPosition) -> TokenStream2 {
+    let mask = 1u8 << idx;
+
+    let render_mask = quote! {
+        let #name = flags & #mask > 0;
+    };
+
     match position {
         BitfieldPosition::Start => {
             quote! {
               let flags = reader.read_u8()?;
-              let #name = flags & 0x1 > 0;
-            }
-        }
-        _ => {
-            let mask = 1u8 << idx;
 
-            quote! {
-              let #name = flags & #mask > 0;
+              #render_mask
             }
         }
+        _ => render_mask,
     }
 }
