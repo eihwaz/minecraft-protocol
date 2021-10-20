@@ -1,4 +1,4 @@
-use crate::parse::{AttributeData, DiscriminantType, FieldData, VariantData};
+use crate::parse::{AttributeData, BitfieldPosition, DiscriminantType, FieldData, VariantData};
 use proc_macro2::TokenStream as TokenStream2;
 use proc_macro2::{Ident, Span};
 use quote::quote;
@@ -140,6 +140,7 @@ fn render_field(field: &FieldData) -> TokenStream2 {
     match &field.attribute {
         AttributeData::With { module } => render_with_field(name, module),
         AttributeData::MaxLength { length } => render_max_length_field(name, *length as u16),
+        AttributeData::Bitfield { idx, position } => render_bitfield(name, *idx, position),
         AttributeData::Empty => render_simple_field(name, ty),
     }
 }
@@ -161,5 +162,24 @@ fn render_with_field(name: &Ident, module: &str) -> TokenStream2 {
 fn render_max_length_field(name: &Ident, max_length: u16) -> TokenStream2 {
     quote! {
         let #name = crate::decoder::DecoderReadExt::read_string(reader, #max_length)?;
+    }
+}
+
+fn render_bitfield(name: &Ident, idx: u8, position: &BitfieldPosition) -> TokenStream2 {
+    let mask = 1u8 << idx;
+
+    let render_mask = quote! {
+        let #name = flags & #mask > 0;
+    };
+
+    match position {
+        BitfieldPosition::Start => {
+            quote! {
+              let flags = reader.read_u8()?;
+
+              #render_mask
+            }
+        }
+        _ => render_mask,
     }
 }

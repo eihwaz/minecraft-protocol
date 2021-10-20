@@ -1,4 +1,4 @@
-use crate::parse::{AttributeData, DiscriminantType, FieldData, VariantData};
+use crate::parse::{AttributeData, BitfieldPosition, DiscriminantType, FieldData, VariantData};
 use proc_macro2::TokenStream as TokenStream2;
 use proc_macro2::{Ident, Span};
 use quote::quote;
@@ -130,6 +130,7 @@ fn render_field(field: &FieldData, with_self: bool) -> TokenStream2 {
         AttributeData::MaxLength { length } => {
             render_max_length_field(name, *length as u16, with_self)
         }
+        AttributeData::Bitfield { idx, position } => render_bitfield(name, *idx, position),
         AttributeData::Empty => render_simple_field(name, with_self),
     }
 }
@@ -152,6 +153,32 @@ fn render_max_length_field(name: &Ident, max_length: u16, with_self: bool) -> To
 
     quote! {
         crate::encoder::EncoderWriteExt::write_string(writer, #final_name, #max_length)?;
+    }
+}
+
+fn render_bitfield(name: &Ident, idx: u8, position: &BitfieldPosition) -> TokenStream2 {
+    let mask = 1u8 << idx;
+
+    let render_mask = quote! {
+        if self.#name {
+            flags |= #mask;
+        }
+    };
+
+    match position {
+        BitfieldPosition::Start => quote!(
+            let mut flags = 0;
+
+            #render_mask
+        ),
+        BitfieldPosition::Intermediate => render_mask,
+        BitfieldPosition::End => {
+            quote! {
+                #render_mask
+
+                writer.write_u8(flags)?;
+            }
+        }
     }
 }
 
