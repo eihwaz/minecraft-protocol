@@ -20,6 +20,7 @@ pub struct ServerVersion {
 pub struct OnlinePlayers {
     pub max: u32,
     pub online: u32,
+    #[serde(default)]
     pub sample: Vec<OnlinePlayer>,
 }
 
