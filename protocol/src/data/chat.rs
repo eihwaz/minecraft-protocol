@@ -68,7 +68,7 @@ use serde::{
 };
 use serde_json::Error;
 
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub enum Color {
     Black,
     DarkBlue,
@@ -175,7 +175,7 @@ impl<'de> Deserialize<'de> for Color {
     }
 }
 
-#[derive(Debug, Eq, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum ClickAction {
     OpenUrl,
@@ -184,7 +184,7 @@ pub enum ClickAction {
     ChangePage,
 }
 
-#[derive(Debug, Eq, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
 pub struct ClickEvent {
     pub action: ClickAction,
     pub value: String,
@@ -199,7 +199,7 @@ impl ClickEvent {
     }
 }
 
-#[derive(Debug, Eq, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum HoverAction {
     ShowText,
@@ -207,7 +207,7 @@ pub enum HoverAction {
     ShowEntity,
 }
 
-#[derive(Debug, Eq, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
 pub struct HoverEvent {
     pub action: HoverAction,
     pub value: String,
@@ -222,7 +222,7 @@ impl HoverEvent {
     }
 }
 
-#[derive(Debug, Eq, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(untagged)]
 pub enum Payload {
     Text {
@@ -280,7 +280,7 @@ impl Payload {
     }
 }
 
-#[derive(Debug, Eq, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Message {
     #[serde(skip_serializing_if = "Option::is_none")]
