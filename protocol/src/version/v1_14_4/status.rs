@@ -164,6 +164,7 @@ mod tests {
             version,
             description: Message::new(Payload::text("Description")),
             players,
+            favicon: None,
         };
 
         let status_response = StatusResponse { server_status };
