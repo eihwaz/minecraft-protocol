@@ -8,7 +8,7 @@ use crate::decoder::{Decoder, DecoderReadExt};
 use crate::encoder::{Encoder, EncoderWriteExt};
 use crate::error::{DecodeError, EncodeError};
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct RawPacket {
     pub id: i32,
     pub data: Vec<u8>,
@@ -36,7 +36,7 @@ impl Decoder for RawPacket {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct CompressedRawPacket {
     packet: RawPacket,
     threshold: i32,
@@ -67,7 +67,7 @@ impl Encoder for CompressedRawPacket {
 }
 
 impl Decoder for CompressedRawPacket {
-    type Output = Self;
+    type Output = UncompressedRawPacket;
 
     fn decode<R: Read>(reader: &mut R) -> Result<Self::Output, DecodeError> {
         let packet_len = reader.read_var_i32()? as u64;
@@ -87,16 +87,23 @@ impl Decoder for CompressedRawPacket {
             RawPacket::decode(&mut decompressed.as_slice())?
         };
 
-        Ok(CompressedRawPacket {
-            packet,
-            threshold: Default::default(),
-        })
+        Ok(UncompressedRawPacket { packet })
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct UncompressedRawPacket {
     packet: RawPacket,
+}
+
+impl UncompressedRawPacket {
+    /// Compress the packet if is is bigger than given threshold. A negative threshold disables compression.
+    pub fn compress(self, threshold: i32) -> CompressedRawPacket {
+        CompressedRawPacket {
+            packet: self.packet,
+            threshold,
+        }
+    }
 }
 
 impl Encoder for UncompressedRawPacket {
