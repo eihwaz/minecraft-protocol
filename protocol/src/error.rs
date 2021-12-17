@@ -73,6 +73,7 @@ pub enum DecodeError {
     VarIntTooLong {
         max_bytes: usize,
     },
+    DecompressionError,
 }
 
 impl From<IoError> for DecodeError {
