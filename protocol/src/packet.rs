@@ -8,6 +8,19 @@ use crate::decoder::{Decoder, DecoderReadExt};
 use crate::encoder::{Encoder, EncoderWriteExt};
 use crate::error::{DecodeError, EncodeError};
 
+fn read_n<R: Read>(reader: R, len: usize) -> Result<Vec<u8>, DecodeError> {
+    let mut buf = Vec::with_capacity(len);
+    let bytes_read = reader.take(len as u64).read_to_end(&mut buf)?;
+
+    if bytes_read != len {
+        return Err(DecodeError::Incomplete {
+            bytes_needed: len - bytes_read,
+        });
+    }
+
+    Ok(buf)
+}
+
 #[derive(Debug, Clone)]
 pub struct RawPacket {
     pub id: i32,
@@ -70,8 +83,10 @@ impl Decoder for CompressedRawPacket {
     type Output = UncompressedRawPacket;
 
     fn decode<R: Read>(reader: &mut R) -> Result<Self::Output, DecodeError> {
-        let packet_len = reader.read_var_i32()? as u64;
-        let mut reader = reader.take(packet_len);
+        let packet_len = reader.read_var_i32()? as usize;
+        let packet_buf = read_n(reader, packet_len)?;
+
+        let mut reader = &mut packet_buf.as_slice();
 
         let data_len = reader.read_var_i32()? as usize;
         let packet = if data_len == 0 {
@@ -122,8 +137,9 @@ impl Decoder for UncompressedRawPacket {
     type Output = Self;
 
     fn decode<R: Read>(reader: &mut R) -> Result<Self::Output, DecodeError> {
-        let len = reader.read_var_i32()? as u64;
-        let packet = RawPacket::decode(&mut reader.take(len))?;
+        let packet_len = reader.read_var_i32()? as usize;
+        let packet_buf = read_n(reader, packet_len)?;
+        let packet = RawPacket::decode(&mut packet_buf.as_slice())?;
 
         Ok(Self { packet })
     }
