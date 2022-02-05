@@ -17,14 +17,14 @@ pub struct Packet {
 
 impl Packet {
     pub fn encode<W: Write>(
-        &self,
+        self,
         writer: &mut W,
         compression_threshold: Option<i32>,
     ) -> Result<(), EncodeError> {
         let mut buf = Vec::new();
         let packet = RawPacket {
             id: self.id,
-            data: self.data.clone(),
+            data: self.data,
         };
         if let Some(threshold) = compression_threshold {
             CompressedRawPacket { packet, threshold }.encode(&mut buf)?;
