@@ -9,12 +9,14 @@ use nbt::CompoundTag;
 use std::io::Read;
 use uuid::Uuid;
 
+#[derive(Debug)]
 pub enum GameServerBoundPacket {
     ServerBoundChatMessage(ServerBoundChatMessage),
     ServerBoundKeepAlive(ServerBoundKeepAlive),
     ServerBoundAbilities(ServerBoundAbilities),
 }
 
+#[derive(Debug)]
 pub enum GameClientBoundPacket {
     ClientBoundChatMessage(ClientBoundChatMessage),
     JoinGame(JoinGame),
@@ -177,7 +179,7 @@ impl JoinGame {
     }
 }
 
-#[derive(Encoder, Decoder)]
+#[derive(Encoder, Decoder, Debug)]
 pub struct ServerBoundKeepAlive {
     pub id: u64,
 }
@@ -190,7 +192,7 @@ impl ServerBoundKeepAlive {
     }
 }
 
-#[derive(Encoder, Decoder)]
+#[derive(Encoder, Decoder, Debug)]
 pub struct ClientBoundKeepAlive {
     pub id: u64,
 }

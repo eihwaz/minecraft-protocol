@@ -8,6 +8,8 @@ pub struct ServerStatus {
     pub version: ServerVersion,
     pub players: OnlinePlayers,
     pub description: Message,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub favicon: Option<String>,
 }
 
 #[derive(Clone, Serialize, Deserialize, Debug)]

@@ -3,6 +3,7 @@ use crate::error::DecodeError;
 use minecraft_protocol_derive::{Decoder, Encoder};
 use std::io::Read;
 
+#[derive(Debug)]
 pub enum HandshakeServerBoundPacket {
     Handshake(Handshake),
 }

@@ -14,7 +14,7 @@ pub enum EncodeError {
         /// Max string length.
         max_length: u16,
     },
-    IOError {
+    IoError {
         io_error: IoError,
     },
     JsonError {
@@ -24,7 +24,7 @@ pub enum EncodeError {
 
 impl From<IoError> for EncodeError {
     fn from(io_error: IoError) -> Self {
-        EncodeError::IOError { io_error }
+        EncodeError::IoError { io_error }
     }
 }
 
@@ -37,6 +37,11 @@ impl From<JsonError> for EncodeError {
 /// Possible errors while decoding packet.
 #[derive(Debug)]
 pub enum DecodeError {
+    /// Packet is incomplete.
+    Incomplete {
+        /// Minimum number of bytes needed to complete the packet.
+        bytes_needed: usize,
+    },
     /// Packet was not recognized. Invalid data or wrong protocol version.
     UnknownPacketType {
         type_id: u8,
@@ -48,7 +53,7 @@ pub enum DecodeError {
         /// Max string length.
         max_length: u16,
     },
-    IOError {
+    IoError {
         io_error: IoError,
     },
     JsonError {
@@ -73,11 +78,12 @@ pub enum DecodeError {
     VarIntTooLong {
         max_bytes: usize,
     },
+    DecompressionError,
 }
 
 impl From<IoError> for DecodeError {
     fn from(io_error: IoError) -> Self {
-        DecodeError::IOError { io_error }
+        DecodeError::IoError { io_error }
     }
 }
 

@@ -4,11 +4,13 @@ use crate::error::DecodeError;
 use minecraft_protocol_derive::{Decoder, Encoder};
 use std::io::Read;
 
+#[derive(Debug)]
 pub enum StatusServerBoundPacket {
     StatusRequest,
     PingRequest(PingRequest),
 }
 
+#[derive(Debug)]
 pub enum StatusClientBoundPacket {
     StatusResponse(StatusResponse),
     PingResponse(PingResponse),
@@ -162,6 +164,7 @@ mod tests {
             version,
             description: Message::new(Payload::text("Description")),
             players,
+            favicon: None,
         };
 
         let status_response = StatusResponse { server_status };
